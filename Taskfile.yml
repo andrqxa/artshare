@@ -1,0 +1,55 @@
+version: "3"
+
+dotenv:
+  - .env
+
+vars:
+  BIN_DIR: bin
+  APP_NAME: recognition
+  APP_PATH: ./cmd/recognition
+  MIGRATIONS_DIR: migrations-postgres
+  MIGRATE_CMD: go run -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+tasks:
+  build:
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - go build -o {{.BIN_DIR}}/{{.APP_NAME}} {{.APP_PATH}}
+
+  check:
+    cmds:
+      - task: test
+      - task: lint
+
+  clean:
+    cmds:
+      - rm -rf {{.BIN_DIR}}/*
+
+  deps:
+    cmds:
+      - go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+  lint:
+    cmds:
+      - go tool golangci-lint run --fix --timeout 5m ./...
+
+  migrate-postgres:
+    cmds:
+      - '{{.MIGRATE_CMD}} -database "$DATABASE_URL" -path {{.MIGRATIONS_DIR}} up'
+
+  migrate-up-postgres:
+    cmds:
+      - '{{.MIGRATE_CMD}} -database "$DATABASE_URL" -path {{.MIGRATIONS_DIR}} up 1'
+
+  migrate-down-postgres:
+    cmds:
+      - '{{.MIGRATE_CMD}} -database "$DATABASE_URL" -path {{.MIGRATIONS_DIR}} down 1'
+
+  run:
+    deps: [build]
+    cmds:
+      - ./{{.BIN_DIR}}/{{.APP_NAME}}
+
+  test:
+    cmds:
+      - go test ./...

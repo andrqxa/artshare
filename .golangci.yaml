@@ -1,0 +1,89 @@
+version: "2"
+run:
+  concurrency: 4
+  modules-download-mode: readonly
+  issues-exit-code: 2
+  tests: false
+  allow-parallel-runners: false
+linters:
+  default: all
+  disable:
+    - bodyclose
+    - contextcheck
+    - depguard
+    - err113
+    - exhaustive
+    - exhaustruct
+    - gochecknoglobals
+    - godox
+    - mnd
+    - nlreturn
+    - varnamelen
+    - wrapcheck
+    - wsl
+    - ireturn
+    - embeddedstructfieldcheck
+    - godoclint
+    - noinlineerr
+    - wsl_v5
+    - nolintlint
+    - noctx # ENABLE ME
+    - nilnil # ENABLE ME
+    - nilerr # ENABLE ME
+    - tagliatelle # ENABLE ME
+    - nestif # ENABLE ME
+    - cyclop # ENABLE ME
+    - gocyclo # ENABLE ME
+    - gocognit # ENABLE ME
+    - dupl # ENABLE ME
+    - funlen # ENABLE ME
+    - maintidx # ENABLE ME
+  settings:
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        - secretsClient
+        - getStore
+    lll:
+      line-length: 120
+    revive:
+      rules:
+        - name: unused-parameter
+          disabled: true
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+        use-field-name: true
+    cyclop:
+      max-complexity: 15
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - ^.github/
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - golines
+  exclusions:
+    generated: lax
+    paths:
+      - ^.github/
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/queen-one)
+    golines:
+      max-len: 120
