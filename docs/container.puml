@@ -1,0 +1,24 @@
+@startuml
+!include C4_Container.puml
+
+title Container diagram for Art Exchange Platform
+
+Person(user, "User", "Artist, viewer, or admin using the platform via browser")
+
+System_Boundary(art_exchange, "Art Exchange Platform") {
+    Container(web_app, "Web Application", "Go, Chi, MVC", "Monolithic web application that handles authentication, profile management, artwork publishing, interactions, and exchange requests via REST API")
+    
+    ContainerDb(postgres, "PostgreSQL", "Relational database", "Stores users, artist profiles, artworks, likes, favorites, follows, exchange requests, and moderation data")
+
+    Container(redis, "Redis", "In-memory data store", "Optional cache for sessions, counters, hot data, and temporary rate-limiting data")
+
+    Container_Ext(s3, "AWS S3", "Object storage", "Optional storage for artwork images and user avatars")
+}
+
+Rel(user, web_app, "Uses", "HTTPS")
+Rel(web_app, postgres, "Reads from and writes to", "SQL/TCP")
+Rel(web_app, redis, "Reads from and writes to", "RESP/TCP")
+Rel(web_app, s3, "Uploads and retrieves files", "HTTPS")
+
+SHOW_LEGEND()
+@enduml

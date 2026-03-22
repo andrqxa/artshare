@@ -1,0 +1,85 @@
+@startuml
+title Component diagram for Art Exchange Platform
+
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+actor "User" as user
+
+rectangle "Artshare Monolith" {
+  package "Entry Point" {
+    component "cmd/artshare\nmain.go" as main
+  }
+
+  package "Configuration" {
+    component "internal/configs\nRead()" as configs
+  }
+
+  package "HTTP Layer" {
+    component "internal/router\nRoute registration" as router
+    component "internal/middleware\nCross-cutting HTTP logic" as middleware
+    component "internal/controller\nRequest handlers" as controller
+    component "pkg/api/v1\nREST API contract" as api
+  }
+
+  package "Domain Layer" {
+    component "internal/model\nDomain models" as model
+    component "internal/repository\nPersistence access" as repository
+  }
+
+  package "Infrastructure" {
+    component "pkg/db\nDB integration" as db
+    component "pkg/util\nShared helpers" as util
+    component "internal/pkg\nInternal shared code" as internalpkg
+  }
+
+  package "Web Assets" {
+    component "web/template\nServer-side templates" as templates
+    component "web/static\nStatic assets" as static
+    component "web/app\nFrontend application assets" as webapp
+  }
+
+  package "Operations" {
+    component "migrations\nSchema migrations" as migrations
+    component "ci/Dockerfile\nContainer build" as dockerfile
+    component "ci/docker-compose.yml\nLocal environment" as compose
+    component "Taskfile.yml\nBuild/test/migrate tasks" as taskfile
+  }
+}
+
+database "PostgreSQL" as postgres
+collections "Redis\n(optional)" as redis
+cloud "S3-compatible storage\n(optional)" as s3
+
+user --> api : HTTP/JSON
+main --> configs : loads config
+main --> router : starts app
+
+router --> middleware : wraps routes
+router --> controller : dispatches requests
+controller --> api : reads/writes DTOs
+controller --> model : uses domain entities
+controller --> repository : persistence requests
+controller --> util : helper functions
+controller --> internalpkg : internal utilities
+
+repository --> db : uses DB adapter
+repository --> model : maps entities
+db --> postgres : SQL
+migrations --> postgres : schema updates
+
+middleware --> redis : sessions/rate limits
+controller --> s3 : file upload/download
+
+controller --> templates : renders HTML if enabled
+templates --> static : references assets
+templates --> webapp : embeds frontend bundle
+
+taskfile --> main : build/run
+taskfile --> migrations : execute migrations
+dockerfile --> main : packages binary
+compose --> dockerfile : starts local app
+
+@enduml
