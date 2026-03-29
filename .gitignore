@@ -65,3 +65,7 @@ bin/artshare.exe
 
 # === Docker specific ===
 **/db-data/*
+
+# === Draw specific ===
+*.bkp
+*.dtmp
