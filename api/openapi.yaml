@@ -1,0 +1,1147 @@
+openapi: 3.0.3
+info:
+  title: ArtShare API
+  version: 1.0.0-draft
+  description: |
+    OpenAPI specification for the ArtShare MVC project.
+
+    This version intentionally describes the MVP scope only:
+    authentication, current user management, public artist profiles,
+    artworks, likes, and exchange requests.
+
+    More advanced features such as favorites, follow relationships,
+    refresh tokens, moderation workflows, and admin operations may be
+    added in future revisions.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api.artshare.example.com
+    description: Example production server
+
+tags:
+  - name: Auth
+    description: Registration and login
+  - name: Users
+    description: Current user account management
+  - name: Artist Profiles
+    description: Public artist profiles and current user's artist profile
+  - name: Artworks
+    description: Artwork creation and browsing
+  - name: Likes
+    description: Like management for artworks
+  - name: Exchange Requests
+    description: Exchange requests related to artworks
+
+paths:
+  /api/v1/auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Authenticate user and issue an access token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication succeeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/users/me:
+    get:
+      tags:
+        - Users
+      summary: Get the current user profile
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    patch:
+      tags:
+        - Users
+      summary: Update the current user profile
+      operationId: updateCurrentUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeRequest"
+      responses:
+        "200":
+          description: Updated current user profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/artists/me:
+    post:
+      tags:
+        - Artist Profiles
+      summary: Create the current user's artist profile
+      operationId: createCurrentArtistProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateArtistProfileRequest"
+      responses:
+        "201":
+          description: Artist profile created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    get:
+      tags:
+        - Artist Profiles
+      summary: Get the current user's artist profile
+      operationId: getCurrentArtistProfile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user's artist profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Artist Profiles
+      summary: Update the current user's artist profile
+      operationId: updateCurrentArtistProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateArtistProfileRequest"
+      responses:
+        "200":
+          description: Updated artist profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/artists:
+    get:
+      tags:
+        - Artist Profiles
+      summary: List public artist profiles
+      operationId: listArtists
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Paginated list of artists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistListResponse"
+
+  /api/v1/artists/{artistId}:
+    get:
+      tags:
+        - Artist Profiles
+      summary: Get a public artist profile by ID
+      operationId: getArtistById
+      parameters:
+        - $ref: "#/components/parameters/ArtistId"
+      responses:
+        "200":
+          description: Artist profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtistDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/artworks:
+    get:
+      tags:
+        - Artworks
+      summary: List artworks
+      operationId: listArtworks
+      parameters:
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - $ref: "#/components/parameters/ArtistFilter"
+        - $ref: "#/components/parameters/ArtworkStatusFilter"
+        - $ref: "#/components/parameters/ArtworkSort"
+      responses:
+        "200":
+          description: Paginated list of artworks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkListResponse"
+    post:
+      tags:
+        - Artworks
+      summary: Create an artwork
+      operationId: createArtwork
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateArtworkRequest"
+      responses:
+        "201":
+          description: Artwork created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/v1/artworks/{artworkId}:
+    get:
+      tags:
+        - Artworks
+      summary: Get artwork details
+      operationId: getArtworkById
+      parameters:
+        - $ref: "#/components/parameters/ArtworkId"
+      responses:
+        "200":
+          description: Artwork details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkDetail"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Artworks
+      summary: Update an existing artwork
+      operationId: updateArtwork
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ArtworkId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateArtworkRequest"
+      responses:
+        "200":
+          description: Updated artwork
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArtworkDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags:
+        - Artworks
+      summary: Delete an artwork
+      operationId: deleteArtwork
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ArtworkId"
+      responses:
+        "204":
+          description: Artwork deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/artworks/{artworkId}/likes:
+    post:
+      tags:
+        - Likes
+      summary: Like an artwork as the current user
+      operationId: likeArtwork
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ArtworkId"
+      responses:
+        "204":
+          description: Artwork liked
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      tags:
+        - Likes
+      summary: Remove the current user's like from an artwork
+      operationId: unlikeArtwork
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ArtworkId"
+      responses:
+        "204":
+          description: Like removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/exchange-requests:
+    get:
+      tags:
+        - Exchange Requests
+      summary: List exchange requests related to the current user
+      operationId: listExchangeRequests
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+        - name: scope
+          in: query
+          description: Filter requests by direction relative to the current user
+          schema:
+            type: string
+            enum:
+              - inbox
+              - outbox
+              - all
+            default: all
+        - name: status
+          in: query
+          description: Filter requests by status
+          schema:
+            $ref: "#/components/schemas/ExchangeRequestStatus"
+      responses:
+        "200":
+          description: Paginated list of exchange requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeRequestListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags:
+        - Exchange Requests
+      summary: Create an exchange request
+      operationId: createExchangeRequest
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExchangeRequest"
+      responses:
+        "201":
+          description: Exchange request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeRequestDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/exchange-requests/{exchangeRequestId}:
+    get:
+      tags:
+        - Exchange Requests
+      summary: Get exchange request details
+      operationId: getExchangeRequestById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeRequestId"
+      responses:
+        "200":
+          description: Exchange request details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeRequestDetail"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags:
+        - Exchange Requests
+      summary: Change exchange request status
+      description: |
+        Intended for accepting, rejecting, or cancelling an exchange request.
+        Business rules should restrict valid transitions depending on the acting user.
+      operationId: updateExchangeRequestStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ExchangeRequestId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateExchangeRequestStatusRequest"
+      responses:
+        "200":
+          description: Updated exchange request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeRequestDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ArtistId:
+      name: artistId
+      in: path
+      required: true
+      description: Artist profile identifier
+      schema:
+        type: string
+        format: uuid
+    ArtworkId:
+      name: artworkId
+      in: path
+      required: true
+      description: Artwork identifier
+      schema:
+        type: string
+        format: uuid
+    ExchangeRequestId:
+      name: exchangeRequestId
+      in: path
+      required: true
+      description: Exchange request identifier
+      schema:
+        type: string
+        format: uuid
+    SearchQuery:
+      name: q
+      in: query
+      description: Free-text search query
+      schema:
+        type: string
+        minLength: 1
+    Page:
+      name: page
+      in: query
+      description: 1-based page index
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      description: Page size
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    ArtistFilter:
+      name: artistId
+      in: query
+      description: Filter artworks by artist profile
+      schema:
+        type: string
+        format: uuid
+    ArtworkStatusFilter:
+      name: status
+      in: query
+      description: Filter artworks by status
+      schema:
+        $ref: "#/components/schemas/ArtworkStatus"
+    ArtworkSort:
+      name: sort
+      in: query
+      description: Artwork sorting strategy
+      schema:
+        type: string
+        enum:
+          - newest
+          - oldest
+        default: newest
+
+  responses:
+    BadRequest:
+      description: The request payload or query parameters are invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is required or the token is invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: The authenticated user does not have permission for this action
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: The requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: The request conflicts with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    Role:
+      type: string
+      enum:
+        - viewer
+        - artist
+
+    ArtworkStatus:
+      type: string
+      enum:
+        - draft
+        - published
+
+    ExchangeRequestStatus:
+      type: string
+      enum:
+        - pending
+        - accepted
+        - rejected
+        - cancelled
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 8
+        role:
+          $ref: "#/components/schemas/Role"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    User:
+      type: object
+      required:
+        - id
+        - email
+        - role
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        role:
+          $ref: "#/components/schemas/Role"
+        createdAt:
+          type: string
+          format: date-time
+
+    CurrentUser:
+      allOf:
+        - $ref: "#/components/schemas/User"
+        - type: object
+          properties:
+            artistProfile:
+              allOf:
+                - $ref: "#/components/schemas/ArtistProfile"
+              nullable: true
+
+    AuthResponse:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - user
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: integer
+          description: Access token lifetime in seconds
+          example: 3600
+        user:
+          $ref: "#/components/schemas/CurrentUser"
+
+    UpdateMeRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+
+    ArtistProfile:
+      type: object
+      required:
+        - id
+        - userId
+        - displayName
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 80
+        bio:
+          type: string
+          maxLength: 2000
+          nullable: true
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateArtistProfileRequest:
+      type: object
+      required:
+        - displayName
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 80
+        bio:
+          type: string
+          maxLength: 2000
+        avatarUrl:
+          type: string
+          format: uri
+
+    UpdateArtistProfileRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 80
+        bio:
+          type: string
+          maxLength: 2000
+        avatarUrl:
+          type: string
+          format: uri
+
+    ArtistSummary:
+      type: object
+      required:
+        - id
+        - displayName
+        - artworkCount
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        artworkCount:
+          type: integer
+          minimum: 0
+
+    ArtistDetail:
+      allOf:
+        - $ref: "#/components/schemas/ArtistSummary"
+        - type: object
+          required:
+            - userId
+            - createdAt
+            - updatedAt
+          properties:
+            userId:
+              type: string
+              format: uuid
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    ArtistListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtistSummary"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    ArtworkImage:
+      type: object
+      required:
+        - url
+      properties:
+        url:
+          type: string
+          format: uri
+        altText:
+          type: string
+          maxLength: 200
+
+    ArtworkOwner:
+      type: object
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    ArtworkSummary:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - owner
+        - likeCount
+        - availabilityForExchange
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          $ref: "#/components/schemas/ArtworkStatus"
+        owner:
+          $ref: "#/components/schemas/ArtworkOwner"
+        previewImageUrl:
+          type: string
+          format: uri
+          nullable: true
+        likeCount:
+          type: integer
+          minimum: 0
+        likedByMe:
+          type: boolean
+        availabilityForExchange:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ArtworkDetail:
+      allOf:
+        - $ref: "#/components/schemas/ArtworkSummary"
+        - type: object
+          required:
+            - description
+            - images
+            - updatedAt
+          properties:
+            description:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+            images:
+              type: array
+              items:
+                $ref: "#/components/schemas/ArtworkImage"
+            updatedAt:
+              type: string
+              format: date-time
+
+    CreateArtworkRequest:
+      type: object
+      required:
+        - title
+        - description
+        - images
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        images:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/ArtworkImage"
+        availabilityForExchange:
+          type: boolean
+          default: false
+
+    UpdateArtworkRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 5000
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+        images:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            $ref: "#/components/schemas/ArtworkImage"
+        availabilityForExchange:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/ArtworkStatus"
+
+    ArtworkListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArtworkSummary"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    CreateExchangeRequest:
+      type: object
+      required:
+        - artworkId
+      properties:
+        artworkId:
+          type: string
+          format: uuid
+        message:
+          type: string
+          maxLength: 2000
+
+    UpdateExchangeRequestStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum:
+            - accepted
+            - rejected
+            - cancelled
+        message:
+          type: string
+          maxLength: 2000
+
+    ExchangeRequestSummary:
+      type: object
+      required:
+        - id
+        - artwork
+        - requesterId
+        - ownerId
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        artwork:
+          $ref: "#/components/schemas/ArtworkOwneredRef"
+        requesterId:
+          type: string
+          format: uuid
+        ownerId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ExchangeRequestStatus"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ExchangeRequestDetail:
+      allOf:
+        - $ref: "#/components/schemas/ExchangeRequestSummary"
+        - type: object
+          properties:
+            message:
+              type: string
+              nullable: true
+
+    ArtworkOwneredRef:
+      type: object
+      required:
+        - id
+        - title
+        - ownerId
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        ownerId:
+          type: string
+          format: uuid
+        previewImageUrl:
+          type: string
+          format: uri
+          nullable: true
+
+    ExchangeRequestListResponse:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExchangeRequestSummary"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PaginationMeta:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalItems
+        - totalPages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        pageSize:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+
+    FieldError:
+      type: object
+      required:
+        - field
+        - message
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: validation_error
+        message:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/FieldError"

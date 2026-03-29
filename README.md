@@ -1,8 +1,8 @@
-# **Art Exchange Platform**
+# **ArtShare**
 
 ## **Project Goal:**
 
-To build an online platform where artists can publish their works and users can view, like, and exchange artworks. The platform should be based on a simple and maintainable architecture and be easily deployable in the cloud.
+ArtShare is an application which allows artists to publish artworks, and other users to browse them, like them, and create exchange requests. The focus of the project is a **simple, maintainable monolithic application** with a clear internal structure and straightforward local/cloud deployment.
 
 ---
 
@@ -10,133 +10,154 @@ To build an online platform where artists can publish their works and users can 
 
 **Monolithic MVC application** with a single REST API backend.
 
-The system is built as one application with clear internal separation into layers:
+The project is structured as one Go application with clear separation of responsibilities:
 
-* **Models** — domain entities and database access
-* **Views** — API responses / optional server-rendered pages
-* **Controllers** — request handling and routing
-* **Services** — business logic
-
-This approach keeps the project simpler to build, test, and deploy than a microservice-based solution.
-
-### Core Modules:
-
-1. **User Module**
-
-   * User registration and authentication
-   * Artist profile management (name, avatar, bio, links)
-   * Roles: artist, viewer, admin
-
-2. **Art Module**
-
-   * Artwork publishing (title, description, images, tags)
-   * Association with the user (creator)
-   * Moderation and publication status
-
-3. **Interaction Module**
-
-   * Likes, views, favorites
-   * Ability to follow artists
-
-4. **Exchange Module** (optional)
-
-   * Exchange requests between users for artworks
-   * Statuses: pending, accepted, rejected
-   * Optional message/comment on the exchange
+- **Models** — domain entities and persistence-related structures
+- **Controllers** — HTTP handlers and request orchestration
+- **Views** — JSON responses now, with the `web/` directory reserved for templates/static assets
+- **Repositories** — database access layer
+- **Middleware** — cross-cutting HTTP concerns
+- **Router** — route registration and composition
 
 ---
 
-## **Technologies:**
+## MVP Modules
 
-* Language: **Go**
-* Framework: **Chi**
-* Architecture style: **MVC**
-* Protocol: **REST**
-* Database: **PostgreSQL**
-* Cache / session / counters: **Redis** (optional)
-* File storage: **AWS S3** (optional)
-* Containerization: **Docker**
-* Deployment: **Kubernetes** (optional for future scaling)
-* CI/CD: **GitHub Actions**
-* Authentication: **JWT**
-* Runner: [Task](https://taskfile.dev)
+### 1. Auth
+
+- register user
+- login user
+- JWT-based authentication
+
+### 2. Users
+
+- get current user profile
+- update current user profile
+- view public artist profile
+
+### 3. Artworks
+
+- create artwork
+- update artwork
+- delete artwork
+- list artworks
+- get artwork details
+
+### 4. Interactions
+
+- like artwork
+- remove like from artwork
+
+### 5. Exchanges
+
+- create exchange request
+- list current user's exchange requests
+- get exchange request details
+- accept / reject / cancel exchange request
+
+---
+## Technology Stack
+
+- **Language:** Go
+- **HTTP router:** Chi
+- **Architecture style:** MVC
+- **Protocol:** REST
+- **Database:** PostgreSQL
+- **Authentication:** JWT
+- **Containerization:** Docker
+- **Task runner:** Task
+- **API documentation:** OpenAPI 3
 
 ---
 
-## **Application Structure Example:**
+## Repository Structure
 
 ```text
-api/
-bin/
-cmd/
-  artshare/
-deployments/
-internal/
-  app/
-  auth/
-  configs/
-  controller/
-  middleware/
-  model/
-  pkg/
-  repository/
-  service/
-  storage/
-/migrations/
-pkg/
-scripts/
-test/
-web/
-  app/
-  static/
-  template/
+.
+├── api
+│   └── openapi.yaml
+├── bin
+├── ci
+│   ├── deployments
+│   ├── docker-compose.yml
+│   ├── Dockerfile
+│   └── scripts
+├── cmd
+│   └── artshare
+│       └── main.go
+├── docs
+│   ├── component.drawio
+│   └── Context.drawio
+├── go.mod
+├── go.sum
+├── internal
+│   ├── configs
+│   │   └── mainConfig.go
+│   ├── controller
+│   ├── middleware
+│   ├── model
+│   ├── pkg
+│   ├── repository
+│   └── router
+├── LICENSE
+├── migrations
+├── pkg
+│   ├── api
+│   │   └── v1
+│   ├── db
+│   └── util
+├── README.md
+├── Taskfile.yml
+├── test
+└── web
+    ├── app
+    ├── static
+    └── template
 ```
 
-### Example MVC mapping:
+---
 
-* **Controllers**
+## MVC Mapping in This Project
 
-  * auth controller
-  * user controller
-  * artwork controller
-  * interaction controller
-  * exchange controller
+### Controllers
 
-* **Models**
+- auth controller
+- user controller
+- artwork controller
+- exchange controller
+- interaction controller
 
-  * user
-  * artist_profile
-  * artwork
-  * like
-  * favorite
-  * follow
-  * exchange_request
+### Models
 
-* **Views**
+- user
+- artist profile
+- artwork
+- like
+- exchange request
 
-  * JSON API responses
-  * validation / error responses
-  * optional frontend templates if needed later
+### Views
+
+- JSON API responses
+- validation and error responses
+- optional server-rendered templates later via `web/template`
 
 ---
 
-## **User Features:**
+## API Contract
 
-* Sign up / log in
-* Profile editing
-* Upload and publish artwork
-* Browse other artists’ galleries
-* Like, follow, favorite
-* Exchange artworks
+The draft OpenAPI specification for the current MVP lives in [api/openapi.yaml](./api/openapi.yaml).
+
+It is intentionally aligned with the minimal feature set described in this README.
 
 ---
 
-## **Non-functional Requirements:**
+## Non-functional Goals
 
-* API documentation
-* Testing (unit + integration)
-* Clear modular structure inside a monolith
-* Easy local development and deployment
+- clear and understandable project structure
+- minimal but consistent API contract
+- support for local development
+- easy containerized запуск and deployment
+- testable code organization
 
 ---
 
