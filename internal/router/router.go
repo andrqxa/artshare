@@ -1,9 +1,9 @@
 package router
 
 import (
-	"os/user"
+	"artshare/internal/router/user"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 )
 
 type Router struct {
@@ -17,7 +17,7 @@ func NewRouter() *Router {
 }
 
 func (rr *Router) Mount() {
-	rr.Post("/users", rr.userHandler.CreateUser)
+	rr.r.Post("/users", rr.userHandler.CreateUser)
 }
 
 func (rr *Router) Router() *chi.Mux {
