@@ -17,7 +17,8 @@ func NewRouter() *Router {
 }
 
 func (rr *Router) Mount() {
-	rr.r.Post("/users", rr.userHandler.CreateUser)
+	rr.r.Post("/users/me", rr.userHandler.CreateUser)
+	rr.r.Patch("/users.me", rr.userHandler.UpdateUser)
 }
 
 func (rr *Router) Router() *chi.Mux {
