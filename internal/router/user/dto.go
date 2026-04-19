@@ -1,20 +1,25 @@
 package user
 
-type CreateUserRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Role     string `json:"role"`
+import "time"
+
+type UpdateCurrentUserRequest struct {
+	Email *string `json:"email,omitempty"`
 }
 
-type CreateUserResponse struct {
-	AccessToken string `json:"accessToken"`
-	TokenType   string `json:"tokenType"`
-	ExpiresIn   int    `json:"expiresIn"`
-	User        User   `json:"user"`
+type CurrentUserResponse struct {
+	ID            string                 `json:"id"`
+	Email         string                 `json:"email"`
+	Role          string                 `json:"role"`
+	CreatedAt     time.Time              `json:"createdAt"`
+	ArtistProfile *ArtistProfileResponse `json:"artistProfile"`
 }
 
-type User struct { // TODO: CHeck!!!
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
+type ArtistProfileResponse struct {
+	ID          string    `json:"id"`
+	UserID      string    `json:"userId"`
+	DisplayName string    `json:"displayName"`
+	Bio         *string   `json:"bio"`
+	AvatarURL   *string   `json:"avatarUrl"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }

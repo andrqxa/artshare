@@ -1,24 +1,30 @@
 package router
 
 import (
-	"artshare/internal/router/user"
+	usercontroller "artshare/internal/controller/user"
+	userrouter "artshare/internal/router/user"
 
 	"github.com/go-chi/chi/v5"
 )
 
 type Router struct {
 	r           *chi.Mux
-	userHandler *user.Handler
+	userHandler *userrouter.Handler
 }
 
 func NewRouter() *Router {
 	r := chi.NewRouter()
-	return &Router{r: r}
+	return &Router{
+		r:           r,
+		userHandler: userrouter.NewHandler(usercontroller.NewController()),
+	}
 }
 
 func (rr *Router) Mount() {
-	rr.r.Post("/users/me", rr.userHandler.CreateUser)
-	rr.r.Patch("/users.me", rr.userHandler.UpdateUser)
+	rr.r.Route("/api/v1", func(r chi.Router) {
+		r.Get("/users/me", rr.userHandler.GetCurrentUser)
+		r.Patch("/users/me", rr.userHandler.UpdateCurrentUser)
+	})
 }
 
 func (rr *Router) Router() *chi.Mux {

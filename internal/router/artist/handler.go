@@ -1,5 +1,7 @@
 package artist
 
+import "artshare/internal/controller/artist"
+
 type Handler struct {
 	controller *artist.Controller
 }
