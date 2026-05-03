@@ -1,106 +1,63 @@
 package user
 
 import (
+	"errors"
 	"fmt"
-	"sync"
-	"time"
 
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	modeluser "github.com/andrqxa/artshare/internal/model/user"
+	"github.com/andrqxa/artshare/internal/repository/repoerror"
+	userrepository "github.com/andrqxa/artshare/internal/repository/user"
 )
 
 type Controller struct {
-	mu          sync.RWMutex
-	nextID      int
-	users       map[string]registeredUser
-	currentUser modeluser.CurrentUser
-}
-
-type registeredUser struct {
-	User     modeluser.CurrentUser
-	Password string
+	repository *userrepository.Repository
 }
 
 func NewController() *Controller {
-	currentUser := modeluser.CurrentUser{
-		ID:        "00000000-0000-0000-0000-000000000001",
-		Email:     "viewer@artshare.local",
-		Role:      modeluser.RoleViewer,
-		CreatedAt: time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC),
-	}
-
 	return &Controller{
-		nextID:      2,
-		currentUser: currentUser,
-		users: map[string]registeredUser{
-			currentUser.Email: {
-				User:     currentUser,
-				Password: "password",
-			},
-		},
+		repository: userrepository.NewRepository(),
 	}
 }
 
 func (c *Controller) RegisterUser(input modeluser.RegisterInput) (modeluser.CurrentUser, modeluser.AuthToken, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if _, exists := c.users[input.Email]; exists {
-		return modeluser.CurrentUser{}, modeluser.AuthToken{}, apperror.ErrConflict
+	user, err := c.repository.Create(input)
+	if err != nil {
+		return modeluser.CurrentUser{}, modeluser.AuthToken{}, controllerError(err)
 	}
-
-	user := modeluser.CurrentUser{
-		ID:        nextUUID(c.nextID),
-		Email:     input.Email,
-		Role:      input.Role,
-		CreatedAt: time.Now().UTC(),
-	}
-	c.nextID++
-	c.users[user.Email] = registeredUser{
-		User:     user,
-		Password: input.Password,
-	}
-	c.currentUser = user
 
 	return user, authTokenForUser(user), nil
 }
 
 func (c *Controller) LoginUser(input modeluser.LoginInput) (modeluser.CurrentUser, modeluser.AuthToken, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	registered, exists := c.users[input.Email]
-	if !exists || registered.Password != input.Password {
+	user, password, err := c.repository.FindByEmail(input.Email)
+	if err != nil || password != input.Password {
 		return modeluser.CurrentUser{}, modeluser.AuthToken{}, apperror.ErrUnauthorized
 	}
 
-	c.currentUser = registered.User
-	return registered.User, authTokenForUser(registered.User), nil
+	c.repository.SetCurrent(user)
+	return user, authTokenForUser(user), nil
 }
 
 func (c *Controller) GetCurrentUser() modeluser.CurrentUser {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return c.currentUser
+	return c.repository.GetCurrent()
 }
 
 func (c *Controller) UpdateCurrentUser(input modeluser.UpdateCurrentUserInput) modeluser.CurrentUser {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	return c.repository.UpdateCurrent(input)
+}
 
-	if input.Email != nil {
-		registered := c.users[c.currentUser.Email]
-		delete(c.users, c.currentUser.Email)
-		c.currentUser.Email = *input.Email
-		registered.User = c.currentUser
-		c.users[c.currentUser.Email] = registeredUser{
-			User:     registered.User,
-			Password: registered.Password,
-		}
+func controllerError(err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case errors.Is(err, repoerror.ErrConflict):
+		return apperror.ErrConflict
+	case errors.Is(err, repoerror.ErrNotFound):
+		return apperror.ErrNotFound
+	default:
+		return err
 	}
-
-	return c.currentUser
 }
 
 func authTokenForUser(user modeluser.CurrentUser) modeluser.AuthToken {
@@ -109,8 +66,4 @@ func authTokenForUser(user modeluser.CurrentUser) modeluser.AuthToken {
 		TokenType:   "Bearer",
 		ExpiresIn:   3600,
 	}
-}
-
-func nextUUID(id int) string {
-	return fmt.Sprintf("00000000-0000-0000-0000-%012d", id)
 }
