@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"artshare/internal/configs"
+	"github.com/andrqxa/artshare/internal/configs"
 )
 
 func main() {
