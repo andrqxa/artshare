@@ -1,4 +1,4 @@
-module artshare
+module github.com/andrqxa/artshare
 
 go 1.26.0
 
