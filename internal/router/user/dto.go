@@ -8,12 +8,8 @@ type CreateUserRequest struct {
 	Role     string `json:"role"`
 }
 
-type CurrentUserResponse struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"createdAt"`
-	User      *User     `json:"user"`
+type UpdateCurrentUserRequest struct {
+	Email *string `json:"email,omitempty"`
 }
 
 type User struct {
@@ -23,6 +19,8 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 	Artist    *Artist   `json:"artist,omitempty"`
 }
+
+type CurrentUserResponse = User
 
 type Artist struct {
 	ID          string    `json:"id"`
