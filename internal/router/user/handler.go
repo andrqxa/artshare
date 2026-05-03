@@ -1,11 +1,16 @@
 package user
 
 import (
+<<<<<<< HEAD
 	controlleruser "artshare/internal/controller/user"
 	modeluser "artshare/internal/model/user"
 	"encoding/json"
 	"errors"
 	"io"
+=======
+	"artshare/internal/controller/user"
+	"encoding/json"
+>>>>>>> develop.bak
 	"net/http"
 	"net/mail"
 	"strings"
@@ -25,132 +30,47 @@ func NewHandler(controller *controlleruser.Controller) *Handler {
 	}
 }
 
-func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
-	if !hasBearerToken(r) {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required or the token is invalid")
+func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toCurrentUserResponse(h.controller.GetCurrentUser()))
-}
+	h.controller.CreateUser()
 
-func (h *Handler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
-	if !hasBearerToken(r) {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "authentication is required or the token is invalid")
-		return
-	}
-
-	var req UpdateCurrentUserRequest
-	if err := decodeJSONBody(w, r, &req); err != nil {
-		writeRequestDecodeError(w, err)
-		return
-	}
-
-	if req.Email != nil {
-		email := strings.TrimSpace(*req.Email)
-		if email == "" || !isValidEmail(email) {
-			writeError(
-				w,
-				http.StatusBadRequest,
-				"validation_error",
-				"the request payload is invalid",
-				FieldError{Field: "email", Message: "must be a valid email address"},
-			)
-			return
-		}
-
-		req.Email = &email
-	}
-
-	currentUser := h.controller.UpdateCurrentUser(modeluser.UpdateCurrentUserInput{
-		Email: req.Email,
+	writeJSON(w, http.StatusCreated, CreateUserResponse{
+		TokenType: "Bearer",
+		User: User{
+			Email: req.Email,
+			Role:  req.Role,
+		},
 	})
-
-	writeJSON(w, http.StatusOK, toCurrentUserResponse(currentUser))
 }
 
-func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
-	if contentType := r.Header.Get("Content-Type"); contentType != "" && !strings.HasPrefix(contentType, "application/json") {
-		return errors.New("content type must be application/json")
-	}
-
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes))
-	decoder.DisallowUnknownFields()
-
-	if err := decoder.Decode(dst); err != nil {
-		return err
-	}
-
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
-		return errMultipleJSONValues
-	}
-
-	return nil
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, User{})
 }
 
-func hasBearerToken(r *http.Request) bool {
-	parts := strings.Fields(r.Header.Get("Authorization"))
-	return len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") && parts[1] != ""
-}
-
-func isValidEmail(email string) bool {
-	address, err := mail.ParseAddress(email)
-	return err == nil && address.Address == email
-}
-
-func toCurrentUserResponse(currentUser modeluser.CurrentUser) CurrentUserResponse {
-	response := CurrentUserResponse{
-		ID:            currentUser.ID,
-		Email:         currentUser.Email,
-		Role:          string(currentUser.Role),
-		CreatedAt:     currentUser.CreatedAt,
-		ArtistProfile: nil,
+func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
 	}
 
-	if currentUser.ArtistProfile != nil {
-		response.ArtistProfile = &ArtistProfileResponse{
-			ID:          currentUser.ArtistProfile.ID,
-			UserID:      currentUser.ArtistProfile.UserID,
-			DisplayName: currentUser.ArtistProfile.DisplayName,
-			Bio:         currentUser.ArtistProfile.Bio,
-			AvatarURL:   currentUser.ArtistProfile.AvatarURL,
-			CreatedAt:   currentUser.ArtistProfile.CreatedAt,
-			UpdatedAt:   currentUser.ArtistProfile.UpdatedAt,
-		}
-	}
-
-	return response
+	writeJSON(w, http.StatusOK, User{
+		Email: req.Email,
+		Role:  req.Role,
+	})
 }
 
-func writeRequestDecodeError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, io.EOF):
-		writeError(w, http.StatusBadRequest, "validation_error", "request body is required")
-	case errors.Is(err, errMultipleJSONValues):
-		writeError(w, http.StatusBadRequest, "validation_error", "request body must contain a single JSON object")
-	default:
-		writeError(w, http.StatusBadRequest, "validation_error", "the request payload is invalid")
-	}
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
 }
 
-func writeError(w http.ResponseWriter, status int, code, message string, details ...FieldError) {
-	response := ErrorResponse{
-		Code:    code,
-		Message: message,
-	}
-
-	if len(details) > 0 {
-		response.Details = details
-	}
-
-	writeJSON(w, status, response)
-}
-
-func writeJSON(w http.ResponseWriter, status int, payload any) {
+func writeJSON(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
+	_ = json.NewEncoder(w).Encode(response)
 }
