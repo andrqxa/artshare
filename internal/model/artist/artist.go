@@ -43,3 +43,9 @@ type UpdateInput struct {
 	Bio         *string
 	AvatarURL   *string
 }
+
+type ListFilter struct {
+	Query    *string
+	Page     int
+	PageSize int
+}
