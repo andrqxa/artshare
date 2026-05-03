@@ -6,7 +6,7 @@ info:
     OpenAPI specification for the ArtShare MVC project.
 
     This version intentionally describes the MVP scope only:
-    authentication, current user management, public artist profiles,
+    authentication, current user management, public artists,
     artworks, likes, and exchange requests.
 
     More advanced features such as favorites, follow relationships,
@@ -23,8 +23,8 @@ tags:
     description: Registration and login
   - name: Users
     description: Current user account management
-  - name: Artist Profiles
-    description: Public artist profiles and current user's artist profile
+  - name: Artists
+    description: Public artists and current user's artist
   - name: Artworks
     description: Artwork creation and browsing
   - name: Likes
@@ -126,9 +126,9 @@ paths:
   /api/v1/artists/me:
     post:
       tags:
-        - Artist Profiles
-      summary: Create the current user's artist profile
-      operationId: createCurrentArtistProfile
+        - Artists
+      summary: Create the current user's artist
+      operationId: createCurrentArtist
       security:
         - bearerAuth: []
       requestBody:
@@ -136,10 +136,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateArtistProfileRequest"
+              $ref: "#/components/schemas/CreateArtistRequest"
       responses:
         "201":
-          description: Artist profile created
+          description: Artist created
           content:
             application/json:
               schema:
@@ -152,14 +152,14 @@ paths:
           $ref: "#/components/responses/Conflict"
     get:
       tags:
-        - Artist Profiles
-      summary: Get the current user's artist profile
-      operationId: getCurrentArtistProfile
+        - Artists
+      summary: Get the current user's artist
+      operationId: getCurrentArtist
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Current user's artist profile
+          description: Current user's artist
           content:
             application/json:
               schema:
@@ -170,9 +170,9 @@ paths:
           $ref: "#/components/responses/NotFound"
     patch:
       tags:
-        - Artist Profiles
-      summary: Update the current user's artist profile
-      operationId: updateCurrentArtistProfile
+        - Artists
+      summary: Update the current user's artist
+      operationId: updateCurrentArtist
       security:
         - bearerAuth: []
       requestBody:
@@ -180,10 +180,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateArtistProfileRequest"
+              $ref: "#/components/schemas/UpdateArtistRequest"
       responses:
         "200":
-          description: Updated artist profile
+          description: Updated artist
           content:
             application/json:
               schema:
@@ -198,8 +198,8 @@ paths:
   /api/v1/artists:
     get:
       tags:
-        - Artist Profiles
-      summary: List public artist profiles
+        - Artists
+      summary: List public artists
       operationId: listArtists
       parameters:
         - $ref: "#/components/parameters/SearchQuery"
@@ -216,14 +216,14 @@ paths:
   /api/v1/artists/{artistId}:
     get:
       tags:
-        - Artist Profiles
-      summary: Get a public artist profile by ID
+        - Artists
+      summary: Get a public artist by ID
       operationId: getArtistById
       parameters:
         - $ref: "#/components/parameters/ArtistId"
       responses:
         "200":
-          description: Artist profile
+          description: Artist
           content:
             application/json:
               schema:
@@ -513,7 +513,7 @@ components:
       name: artistId
       in: path
       required: true
-      description: Artist profile identifier
+      description: Artist identifier
       schema:
         type: string
         format: uuid
@@ -560,7 +560,7 @@ components:
     ArtistFilter:
       name: artistId
       in: query
-      description: Filter artworks by artist profile
+      description: Filter artworks by artist
       schema:
         type: string
         format: uuid
@@ -689,9 +689,9 @@ components:
         - $ref: "#/components/schemas/User"
         - type: object
           properties:
-            artistProfile:
+            artist:
               allOf:
-                - $ref: "#/components/schemas/ArtistProfile"
+                - $ref: "#/components/schemas/Artist"
               nullable: true
 
     AuthResponse:
@@ -721,7 +721,7 @@ components:
           type: string
           format: email
 
-    ArtistProfile:
+    Artist:
       type: object
       required:
         - id
@@ -755,7 +755,7 @@ components:
           type: string
           format: date-time
 
-    CreateArtistProfileRequest:
+    CreateArtistRequest:
       type: object
       required:
         - displayName
@@ -771,7 +771,7 @@ components:
           type: string
           format: uri
 
-    UpdateArtistProfileRequest:
+    UpdateArtistRequest:
       type: object
       properties:
         displayName:
