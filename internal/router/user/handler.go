@@ -2,6 +2,7 @@ package user
 
 import (
 	"artshare/internal/controller/user"
+	"encoding/json"
 	"net/http"
 )
 
@@ -16,14 +17,46 @@ func NewHandler(controller *user.Controller) *Handler {
 }
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
 
-	// TODO: Implement logic with controller call
+	h.controller.CreateUser()
 
-	// распаковуваем ДТО из запроса
+	writeJSON(w, http.StatusCreated, CreateUserResponse{
+		TokenType: "Bearer",
+		User: User{
+			Email: req.Email,
+			Role:  req.Role,
+		},
+	})
 }
 
-func (h *Handler) UpdateUser(writer http.ResponseWriter, request *http.Request) {
-
+func (h *Handler) GetUser(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, User{})
 }
 
-//TODO: Implement other handlers (GetUser, UpdateUser, DeleteUser, etc.)
+func (h *Handler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	var req CreateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid request body"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, User{
+		Email: req.Email,
+		Role:  req.Role,
+	})
+}
+
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func writeJSON(w http.ResponseWriter, status int, response any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(response)
+}

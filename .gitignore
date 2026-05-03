@@ -69,3 +69,6 @@ bin/artshare.exe
 # === Draw specific ===
 *.bkp
 *.dtmp
+
+# === AI specific ===
+.codex
