@@ -3,12 +3,15 @@ package artist
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
+	"github.com/andrqxa/artshare/internal/controller/apperror"
 	"github.com/andrqxa/artshare/internal/controller/artist"
+	modelartist "github.com/andrqxa/artshare/internal/model/artist"
+	"github.com/andrqxa/artshare/internal/model/pagination"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -31,11 +34,31 @@ func (h *Handler) CreateCurrentArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeNotImplemented(w, "createCurrentArtist")
+	if errs := validateCreateArtistRequest(req); len(errs) > 0 {
+		writeValidationError(w, errs)
+		return
+	}
+
+	artist, err := h.controller.CreateCurrentArtist(modelartist.CreateInput{
+		DisplayName: strings.TrimSpace(req.DisplayName),
+		Bio:         req.Bio,
+		AvatarURL:   req.AvatarURL,
+	})
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, artistDetailFromModel(artist))
 }
 
 func (h *Handler) GetCurrentArtist(w http.ResponseWriter, r *http.Request) {
-	writeNotImplemented(w, "getCurrentArtist")
+	artist, err := h.controller.GetCurrentArtist("")
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, artistDetailFromModel(artist))
 }
 
 func (h *Handler) UpdateCurrentArtist(w http.ResponseWriter, r *http.Request) {
@@ -45,52 +68,79 @@ func (h *Handler) UpdateCurrentArtist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeNotImplemented(w, "updateCurrentArtist")
+	if errs := validateUpdateArtistRequest(req); len(errs) > 0 {
+		writeValidationError(w, errs)
+		return
+	}
+
+	artist, err := h.controller.UpdateCurrentArtist("", modelartist.UpdateInput{
+		DisplayName: trimmedString(req.DisplayName),
+		Bio:         req.Bio,
+		AvatarURL:   req.AvatarURL,
+	})
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, artistDetailFromModel(artist))
 }
 
 func (h *Handler) ListArtists(w http.ResponseWriter, r *http.Request) {
-	page, pageSize := paginationFromRequest(r)
+	page, pageSize, ok := paginationFromRequest(w, r)
+	if !ok {
+		return
+	}
+	query := optionalQuery(r, "q")
+	artists, meta := h.controller.ListArtists(modelartist.ListFilter{
+		Query:    query,
+		Page:     page,
+		PageSize: pageSize,
+	})
+
 	writeJSON(w, http.StatusOK, ArtistListResponse{
-		Data: []ArtistSummary{},
-		Meta: PaginationMeta{
-			Page:       page,
-			PageSize:   pageSize,
-			TotalItems: 0,
-			TotalPages: 0,
-		},
+		Data: artistSummariesFromModel(artists),
+		Meta: paginationMetaFromModel(meta),
 	})
 }
 
 func (h *Handler) GetArtistByID(w http.ResponseWriter, r *http.Request) {
-	_ = chi.URLParam(r, "artistId")
-	writeNotImplemented(w, "getArtistById")
+	artist, err := h.controller.GetArtistByID(chi.URLParam(r, "artistId"))
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, artistDetailFromModel(artist))
 }
 
-func paginationFromRequest(r *http.Request) (int, int) {
-	page := intQueryParam(r, "page", 1)
-	pageSize := intQueryParam(r, "pageSize", 20)
-	if page < 1 {
-		page = 1
+func paginationFromRequest(w http.ResponseWriter, r *http.Request) (int, int, bool) {
+	page, err := intQueryParam(r, "page", 1)
+	if err != nil || page < 1 {
+		writeValidationError(w, []FieldError{{Field: "page", Message: "must be an integer greater than or equal to 1"}})
+		return 0, 0, false
 	}
-	if pageSize < 1 {
-		pageSize = 20
+	pageSize, err := intQueryParam(r, "pageSize", 20)
+	if err != nil || pageSize < 1 {
+		writeValidationError(w, []FieldError{{Field: "pageSize", Message: "must be an integer between 1 and 100"}})
+		return 0, 0, false
 	}
 	if pageSize > 100 {
-		pageSize = 100
+		writeValidationError(w, []FieldError{{Field: "pageSize", Message: "must be an integer between 1 and 100"}})
+		return 0, 0, false
 	}
-	return page, pageSize
+	return page, pageSize, true
 }
 
-func intQueryParam(r *http.Request, name string, fallback int) int {
+func intQueryParam(r *http.Request, name string, fallback int) (int, error) {
 	value := r.URL.Query().Get(name)
 	if value == "" {
-		return fallback
+		return fallback, nil
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
-		return fallback
+		return 0, err
 	}
-	return parsed
+	return parsed, nil
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
@@ -121,15 +171,88 @@ func writeDecodeError(w http.ResponseWriter, err error) {
 	})
 }
 
-func writeNotImplemented(w http.ResponseWriter, operation string) {
-	writeJSON(w, http.StatusNotImplemented, ErrorResponse{
-		Code:    "not_implemented",
-		Message: fmt.Sprintf("%s is not implemented yet", operation),
-	})
-}
-
 func writeJSON(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+func validateCreateArtistRequest(req CreateArtistRequest) []FieldError {
+	displayName := strings.TrimSpace(req.DisplayName)
+	if len(displayName) < 2 || len(displayName) > 80 {
+		return []FieldError{{Field: "displayName", Message: "must be between 2 and 80 characters"}}
+	}
+	return nil
+}
+
+func validateUpdateArtistRequest(req UpdateArtistRequest) []FieldError {
+	if req.DisplayName != nil {
+		displayName := strings.TrimSpace(*req.DisplayName)
+		if len(displayName) < 2 || len(displayName) > 80 {
+			return []FieldError{{Field: "displayName", Message: "must be between 2 and 80 characters"}}
+		}
+	}
+	return nil
+}
+
+func trimmedString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	return &trimmed
+}
+
+func optionalQuery(r *http.Request, name string) *string {
+	value := strings.TrimSpace(r.URL.Query().Get(name))
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func writeValidationError(w http.ResponseWriter, details []FieldError) {
+	writeJSON(w, http.StatusBadRequest, ErrorResponse{Code: "validation_error", Message: "request validation failed", Details: details})
+}
+
+func writeControllerError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, apperror.ErrConflict):
+		writeJSON(w, http.StatusConflict, ErrorResponse{Code: "conflict", Message: "request conflicts with current resource state"})
+	case errors.Is(err, apperror.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, ErrorResponse{Code: "not_found", Message: "requested resource was not found"})
+	default:
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+	}
+}
+
+func artistSummariesFromModel(artists []modelartist.Summary) []ArtistSummary {
+	out := make([]ArtistSummary, 0, len(artists))
+	for _, artist := range artists {
+		out = append(out, ArtistSummary{
+			ID:           artist.ID,
+			DisplayName:  artist.DisplayName,
+			AvatarURL:    artist.AvatarURL,
+			Bio:          artist.Bio,
+			ArtworkCount: artist.ArtworkCount,
+		})
+	}
+	return out
+}
+
+func artistDetailFromModel(artist modelartist.Detail) ArtistDetail {
+	return ArtistDetail{
+		ID:           artist.ID,
+		DisplayName:  artist.DisplayName,
+		AvatarURL:    artist.AvatarURL,
+		Bio:          artist.Bio,
+		ArtworkCount: artist.ArtworkCount,
+		UserID:       artist.UserID,
+		CreatedAt:    artist.CreatedAt,
+		UpdatedAt:    artist.UpdatedAt,
+	}
+}
+
+func paginationMetaFromModel(meta pagination.Meta) PaginationMeta {
+	return PaginationMeta{Page: meta.Page, PageSize: meta.PageSize, TotalItems: meta.TotalItems, TotalPages: meta.TotalPages}
 }

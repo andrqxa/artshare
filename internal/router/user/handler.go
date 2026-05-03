@@ -3,12 +3,12 @@ package user
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/mail"
 	"strings"
 
+	"github.com/andrqxa/artshare/internal/controller/apperror"
 	controlleruser "github.com/andrqxa/artshare/internal/controller/user"
 	modeluser "github.com/andrqxa/artshare/internal/model/user"
 )
@@ -34,7 +34,22 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeNotImplemented(w, "registerUser")
+	if errs := validateRegisterRequest(req); len(errs) > 0 {
+		writeValidationError(w, errs)
+		return
+	}
+
+	currentUser, token, err := h.controller.RegisterUser(modeluser.RegisterInput{
+		Email:    strings.TrimSpace(req.Email),
+		Password: req.Password,
+		Role:     modeluser.Role(req.Role),
+	})
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, authResponseFromModel(currentUser, token))
 }
 
 func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
@@ -44,7 +59,21 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeNotImplemented(w, "loginUser")
+	if errs := validateLoginRequest(req); len(errs) > 0 {
+		writeValidationError(w, errs)
+		return
+	}
+
+	currentUser, token, err := h.controller.LoginUser(modeluser.LoginInput{
+		Email:    strings.TrimSpace(req.Email),
+		Password: req.Password,
+	})
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, authResponseFromModel(currentUser, token))
 }
 
 func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -79,17 +108,6 @@ func (h *Handler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, currentUserResponseFromModel(currentUser))
 }
 
-func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func writeNotImplemented(w http.ResponseWriter, operation string) {
-	writeJSON(w, http.StatusNotImplemented, ErrorResponse{
-		Code:    "not_implemented",
-		Message: fmt.Sprintf("%s is not implemented yet", operation),
-	})
-}
-
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 
@@ -118,6 +136,51 @@ func writeDecodeError(w http.ResponseWriter, err error) {
 	})
 }
 
+func validateRegisterRequest(req RegisterRequest) []FieldError {
+	var errs []FieldError
+	email := strings.TrimSpace(req.Email)
+	if _, err := mail.ParseAddress(email); err != nil {
+		errs = append(errs, FieldError{Field: "email", Message: "must be a valid email address"})
+	}
+	if len(req.Password) < 8 {
+		errs = append(errs, FieldError{Field: "password", Message: "must be at least 8 characters"})
+	}
+	if req.Role != string(modeluser.RoleViewer) && req.Role != string(modeluser.RoleArtist) {
+		errs = append(errs, FieldError{Field: "role", Message: "must be viewer or artist"})
+	}
+	return errs
+}
+
+func validateLoginRequest(req LoginRequest) []FieldError {
+	var errs []FieldError
+	if _, err := mail.ParseAddress(strings.TrimSpace(req.Email)); err != nil {
+		errs = append(errs, FieldError{Field: "email", Message: "must be a valid email address"})
+	}
+	if req.Password == "" {
+		errs = append(errs, FieldError{Field: "password", Message: "is required"})
+	}
+	return errs
+}
+
+func writeValidationError(w http.ResponseWriter, details []FieldError) {
+	writeJSON(w, http.StatusBadRequest, ErrorResponse{
+		Code:    "validation_error",
+		Message: "request validation failed",
+		Details: details,
+	})
+}
+
+func writeControllerError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, apperror.ErrConflict):
+		writeJSON(w, http.StatusConflict, ErrorResponse{Code: "conflict", Message: "request conflicts with current resource state"})
+	case errors.Is(err, apperror.ErrUnauthorized):
+		writeJSON(w, http.StatusUnauthorized, ErrorResponse{Code: "unauthorized", Message: "authentication failed"})
+	default:
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+	}
+}
+
 func currentUserResponseFromModel(currentUser modeluser.CurrentUser) CurrentUserResponse {
 	return CurrentUserResponse{
 		ID:        currentUser.ID,
@@ -125,6 +188,15 @@ func currentUserResponseFromModel(currentUser modeluser.CurrentUser) CurrentUser
 		Role:      string(currentUser.Role),
 		CreatedAt: currentUser.CreatedAt,
 		Artist:    artistFromModel(currentUser.ArtistProfile),
+	}
+}
+
+func authResponseFromModel(currentUser modeluser.CurrentUser, token modeluser.AuthToken) AuthResponse {
+	return AuthResponse{
+		AccessToken: token.AccessToken,
+		TokenType:   token.TokenType,
+		ExpiresIn:   token.ExpiresIn,
+		User:        currentUserResponseFromModel(currentUser),
 	}
 }
 

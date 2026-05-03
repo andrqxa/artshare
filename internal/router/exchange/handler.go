@@ -3,12 +3,15 @@ package exchange
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/andrqxa/artshare/internal/controller/apperror"
 	"github.com/andrqxa/artshare/internal/controller/exchange"
+	modelartwork "github.com/andrqxa/artshare/internal/model/artwork"
+	modelexchange "github.com/andrqxa/artshare/internal/model/exchange"
+	"github.com/andrqxa/artshare/internal/model/pagination"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -25,15 +28,30 @@ func NewHandler(controller *exchange.Controller) *Handler {
 }
 
 func (h *Handler) ListExchangeRequests(w http.ResponseWriter, r *http.Request) {
-	page, pageSize := paginationFromRequest(r)
+	page, pageSize, ok := paginationFromRequest(w, r)
+	if !ok {
+		return
+	}
+	scope, ok := exchangeScopeFromQuery(w, r)
+	if !ok {
+		return
+	}
+	status, ok := exchangeStatusFromQuery(w, r, "status", true)
+	if !ok {
+		return
+	}
+
+	requests, meta := h.controller.ListExchangeRequests(modelexchange.ListFilter{
+		UserID:   "00000000-0000-0000-0000-000000000001",
+		Scope:    scope,
+		Status:   status,
+		Page:     page,
+		PageSize: pageSize,
+	})
+
 	writeJSON(w, http.StatusOK, ExchangeRequestListResponse{
-		Data: []ExchangeRequestSummary{},
-		Meta: PaginationMeta{
-			Page:       page,
-			PageSize:   pageSize,
-			TotalItems: 0,
-			TotalPages: 0,
-		},
+		Data: exchangeRequestSummariesFromModel(requests),
+		Meta: paginationMetaFromModel(meta),
 	})
 }
 
@@ -44,50 +62,83 @@ func (h *Handler) CreateExchangeRequest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	writeNotImplemented(w, "createExchangeRequest")
+	if req.ArtworkID == "" {
+		writeValidationError(w, []FieldError{{Field: "artworkId", Message: "is required"}})
+		return
+	}
+
+	request, err := h.controller.CreateExchangeRequest(modelexchange.CreateInput{
+		ArtworkID:   req.ArtworkID,
+		RequesterID: "00000000-0000-0000-0000-000000000001",
+		Message:     req.Message,
+	})
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, exchangeRequestDetailFromModel(request))
 }
 
 func (h *Handler) GetExchangeRequestByID(w http.ResponseWriter, r *http.Request) {
-	_ = chi.URLParam(r, "exchangeRequestId")
-	writeNotImplemented(w, "getExchangeRequestById")
+	request, err := h.controller.GetExchangeRequestByID(chi.URLParam(r, "exchangeRequestId"))
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, exchangeRequestDetailFromModel(request))
 }
 
 func (h *Handler) UpdateExchangeRequestStatus(w http.ResponseWriter, r *http.Request) {
-	_ = chi.URLParam(r, "exchangeRequestId")
 	var req UpdateExchangeRequestStatusRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeDecodeError(w, err)
 		return
 	}
 
-	writeNotImplemented(w, "updateExchangeRequestStatus")
+	status, ok := exchangeStatusFromValue(w, req.Status, "status", false)
+	if !ok {
+		return
+	}
+	request, err := h.controller.UpdateExchangeRequestStatus(modelexchange.UpdateStatusInput{
+		ID:      chi.URLParam(r, "exchangeRequestId"),
+		Status:  *status,
+		Message: req.Message,
+	})
+	if err != nil {
+		writeControllerError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, exchangeRequestDetailFromModel(request))
 }
 
-func paginationFromRequest(r *http.Request) (int, int) {
-	page := intQueryParam(r, "page", 1)
-	pageSize := intQueryParam(r, "pageSize", 20)
-	if page < 1 {
-		page = 1
+func paginationFromRequest(w http.ResponseWriter, r *http.Request) (int, int, bool) {
+	page, err := intQueryParam(r, "page", 1)
+	if err != nil || page < 1 {
+		writeValidationError(w, []FieldError{{Field: "page", Message: "must be an integer greater than or equal to 1"}})
+		return 0, 0, false
 	}
-	if pageSize < 1 {
-		pageSize = 20
+	pageSize, err := intQueryParam(r, "pageSize", 20)
+	if err != nil || pageSize < 1 {
+		writeValidationError(w, []FieldError{{Field: "pageSize", Message: "must be an integer between 1 and 100"}})
+		return 0, 0, false
 	}
 	if pageSize > 100 {
-		pageSize = 100
+		writeValidationError(w, []FieldError{{Field: "pageSize", Message: "must be an integer between 1 and 100"}})
+		return 0, 0, false
 	}
-	return page, pageSize
+	return page, pageSize, true
 }
 
-func intQueryParam(r *http.Request, name string, fallback int) int {
+func intQueryParam(r *http.Request, name string, fallback int) (int, error) {
 	value := r.URL.Query().Get(name)
 	if value == "" {
-		return fallback
+		return fallback, nil
 	}
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
-		return fallback
+		return 0, err
 	}
-	return parsed
+	return parsed, nil
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
@@ -118,15 +169,102 @@ func writeDecodeError(w http.ResponseWriter, err error) {
 	})
 }
 
-func writeNotImplemented(w http.ResponseWriter, operation string) {
-	writeJSON(w, http.StatusNotImplemented, ErrorResponse{
-		Code:    "not_implemented",
-		Message: fmt.Sprintf("%s is not implemented yet", operation),
-	})
-}
-
 func writeJSON(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+func exchangeScopeFromQuery(w http.ResponseWriter, r *http.Request) (modelexchange.Scope, bool) {
+	value := r.URL.Query().Get("scope")
+	if value == "" {
+		return modelexchange.ScopeAll, true
+	}
+	switch modelexchange.Scope(value) {
+	case modelexchange.ScopeInbox, modelexchange.ScopeOutbox, modelexchange.ScopeAll:
+		return modelexchange.Scope(value), true
+	default:
+		writeValidationError(w, []FieldError{{Field: "scope", Message: "must be inbox, outbox, or all"}})
+		return "", false
+	}
+}
+
+func exchangeStatusFromQuery(w http.ResponseWriter, r *http.Request, name string, allowPending bool) (*modelexchange.Status, bool) {
+	value := r.URL.Query().Get(name)
+	if value == "" {
+		return nil, true
+	}
+	return exchangeStatusFromValue(w, value, name, allowPending)
+}
+
+func exchangeStatusFromValue(w http.ResponseWriter, value string, field string, allowPending bool) (*modelexchange.Status, bool) {
+	status := modelexchange.Status(value)
+	switch status {
+	case modelexchange.StatusAccepted, modelexchange.StatusRejected, modelexchange.StatusCancelled:
+		return &status, true
+	case modelexchange.StatusPending:
+		if allowPending {
+			return &status, true
+		}
+	}
+	if allowPending {
+		writeValidationError(w, []FieldError{{Field: field, Message: "must be pending, accepted, rejected, or cancelled"}})
+	} else {
+		writeValidationError(w, []FieldError{{Field: field, Message: "must be accepted, rejected, or cancelled"}})
+	}
+	return nil, false
+}
+
+func writeValidationError(w http.ResponseWriter, details []FieldError) {
+	writeJSON(w, http.StatusBadRequest, ErrorResponse{Code: "validation_error", Message: "request validation failed", Details: details})
+}
+
+func writeControllerError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, apperror.ErrConflict):
+		writeJSON(w, http.StatusConflict, ErrorResponse{Code: "conflict", Message: "request conflicts with current resource state"})
+	case errors.Is(err, apperror.ErrNotFound):
+		writeJSON(w, http.StatusNotFound, ErrorResponse{Code: "not_found", Message: "requested resource was not found"})
+	case errors.Is(err, apperror.ErrForbidden):
+		writeJSON(w, http.StatusForbidden, ErrorResponse{Code: "forbidden", Message: "permission denied"})
+	default:
+		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+	}
+}
+
+func exchangeRequestSummariesFromModel(requests []modelexchange.Summary) []ExchangeRequestSummary {
+	out := make([]ExchangeRequestSummary, 0, len(requests))
+	for _, request := range requests {
+		out = append(out, ExchangeRequestSummary{
+			ID:          request.ID,
+			Artwork:     artworkRefFromModel(request.Artwork),
+			RequesterID: request.RequesterID,
+			OwnerID:     request.OwnerID,
+			Status:      string(request.Status),
+			CreatedAt:   request.CreatedAt,
+			UpdatedAt:   request.UpdatedAt,
+		})
+	}
+	return out
+}
+
+func exchangeRequestDetailFromModel(request modelexchange.Detail) ExchangeRequestDetail {
+	return ExchangeRequestDetail{
+		ID:          request.ID,
+		Artwork:     artworkRefFromModel(request.Artwork),
+		RequesterID: request.RequesterID,
+		OwnerID:     request.OwnerID,
+		Status:      string(request.Status),
+		CreatedAt:   request.CreatedAt,
+		UpdatedAt:   request.UpdatedAt,
+		Message:     request.Message,
+	}
+}
+
+func artworkRefFromModel(artwork modelartwork.OwneredRef) ArtworkOwneredRef {
+	return ArtworkOwneredRef{ID: artwork.ID, Title: artwork.Title, OwnerID: artwork.OwnerID, PreviewImageURL: artwork.PreviewImageURL}
+}
+
+func paginationMetaFromModel(meta pagination.Meta) PaginationMeta {
+	return PaginationMeta{Page: meta.Page, PageSize: meta.PageSize, TotalItems: meta.TotalItems, TotalPages: meta.TotalPages}
 }
