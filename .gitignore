@@ -12,6 +12,7 @@
 # Folders
 _obj
 _test
+.gocache
 
 # Architecture specific extensions/prefixes
 *.[568vq]
