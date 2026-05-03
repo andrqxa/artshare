@@ -1,6 +1,10 @@
 package user
 
-import "time"
+import (
+	"time"
+
+	modelartist "github.com/andrqxa/artshare/internal/model/artist"
+)
 
 type Role string
 
@@ -9,15 +13,7 @@ const (
 	RoleArtist Role = "artist"
 )
 
-type ArtistProfile struct {
-	ID          string
-	UserID      string
-	DisplayName string
-	Bio         *string
-	AvatarURL   *string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
+type ArtistProfile = modelartist.Artist
 
 type CurrentUser struct {
 	ID            string
@@ -29,4 +25,21 @@ type CurrentUser struct {
 
 type UpdateCurrentUserInput struct {
 	Email *string
+}
+
+type RegisterInput struct {
+	Email    string
+	Password string
+	Role     Role
+}
+
+type LoginInput struct {
+	Email    string
+	Password string
+}
+
+type AuthToken struct {
+	AccessToken string
+	TokenType   string
+	ExpiresIn   int
 }
