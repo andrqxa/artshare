@@ -1,9 +1,10 @@
 package user
 
 import (
-	modeluser "artshare/internal/model/user"
 	"sync"
 	"time"
+
+	modeluser "github.com/andrqxa/artshare/internal/model/user"
 )
 
 type Controller struct {

@@ -2,10 +2,15 @@ package user
 
 import "time"
 
-type CreateUserRequest struct {
+type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Role     string `json:"role"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type UpdateCurrentUserRequest struct {
@@ -21,6 +26,13 @@ type User struct {
 }
 
 type CurrentUserResponse = User
+
+type AuthResponse struct {
+	AccessToken string `json:"accessToken"`
+	TokenType   string `json:"tokenType"`
+	ExpiresIn   int    `json:"expiresIn"`
+	User        User   `json:"user"`
+}
 
 type Artist struct {
 	ID          string    `json:"id"`

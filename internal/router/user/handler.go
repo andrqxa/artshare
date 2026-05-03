@@ -1,14 +1,16 @@
 package user
 
 import (
-	controlleruser "artshare/internal/controller/user"
-	modeluser "artshare/internal/model/user"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/mail"
 	"strings"
+
+	controlleruser "github.com/andrqxa/artshare/internal/controller/user"
+	modeluser "github.com/andrqxa/artshare/internal/model/user"
 )
 
 const maxRequestBodyBytes = 1 << 20
@@ -23,6 +25,26 @@ func NewHandler(controller *controlleruser.Controller) *Handler {
 	return &Handler{
 		controller: controller,
 	}
+}
+
+func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+	var req RegisterRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeDecodeError(w, err)
+		return
+	}
+
+	writeNotImplemented(w, "registerUser")
+}
+
+func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
+	var req LoginRequest
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeDecodeError(w, err)
+		return
+	}
+
+	writeNotImplemented(w, "loginUser")
 }
 
 func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +81,13 @@ func (h *Handler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func writeNotImplemented(w http.ResponseWriter, operation string) {
+	writeJSON(w, http.StatusNotImplemented, ErrorResponse{
+		Code:    "not_implemented",
+		Message: fmt.Sprintf("%s is not implemented yet", operation),
+	})
 }
 
 func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
