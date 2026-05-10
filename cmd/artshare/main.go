@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,11 +13,12 @@ import (
 	exchangecontroller "github.com/andrqxa/artshare/internal/controller/exchange"
 	likecontroller "github.com/andrqxa/artshare/internal/controller/like"
 	usercontroller "github.com/andrqxa/artshare/internal/controller/user"
-	artistrepository "github.com/andrqxa/artshare/internal/repository/memory/artist"
 	artworkrepository "github.com/andrqxa/artshare/internal/repository/memory/artwork"
 	exchangerepository "github.com/andrqxa/artshare/internal/repository/memory/exchange"
 	likerepository "github.com/andrqxa/artshare/internal/repository/memory/like"
 	userrepository "github.com/andrqxa/artshare/internal/repository/memory/user"
+	"github.com/andrqxa/artshare/internal/repository/postgres"
+	artistrepository "github.com/andrqxa/artshare/internal/repository/postgres/artist"
 	"github.com/andrqxa/artshare/internal/router"
 	artistrouter "github.com/andrqxa/artshare/internal/router/artist"
 	artworkrouter "github.com/andrqxa/artshare/internal/router/artwork"
@@ -40,8 +42,14 @@ func run() error {
 		cfg.Port = os.Args[1]
 	}
 
+	postgresConnection, err := postgres.NewConnection(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer postgresConnection.Close()
+
 	userRepository := userrepository.NewRepository()
-	artistRepository := artistrepository.NewRepository()
+	artistRepository := artistrepository.NewRepository(postgresConnection)
 	artworkRepository := artworkrepository.NewRepository()
 	likeRepository := likerepository.NewRepository()
 	exchangeRepository := exchangerepository.NewRepository()
