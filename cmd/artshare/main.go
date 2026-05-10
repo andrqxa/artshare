@@ -7,7 +7,22 @@ import (
 	"os"
 
 	"github.com/andrqxa/artshare/internal/configs"
+	artistcontroller "github.com/andrqxa/artshare/internal/controller/artist"
+	artworkcontroller "github.com/andrqxa/artshare/internal/controller/artwork"
+	exchangecontroller "github.com/andrqxa/artshare/internal/controller/exchange"
+	likecontroller "github.com/andrqxa/artshare/internal/controller/like"
+	usercontroller "github.com/andrqxa/artshare/internal/controller/user"
+	artistrepository "github.com/andrqxa/artshare/internal/repository/memory/artist"
+	artworkrepository "github.com/andrqxa/artshare/internal/repository/memory/artwork"
+	exchangerepository "github.com/andrqxa/artshare/internal/repository/memory/exchange"
+	likerepository "github.com/andrqxa/artshare/internal/repository/memory/like"
+	userrepository "github.com/andrqxa/artshare/internal/repository/memory/user"
 	"github.com/andrqxa/artshare/internal/router"
+	artistrouter "github.com/andrqxa/artshare/internal/router/artist"
+	artworkrouter "github.com/andrqxa/artshare/internal/router/artwork"
+	exchangerouter "github.com/andrqxa/artshare/internal/router/exchange"
+	likerouter "github.com/andrqxa/artshare/internal/router/like"
+	userrouter "github.com/andrqxa/artshare/internal/router/user"
 )
 
 func main() {
@@ -25,7 +40,25 @@ func run() error {
 		cfg.Port = os.Args[1]
 	}
 
-	r := router.NewRouter()
+	userRepository := userrepository.NewRepository()
+	artistRepository := artistrepository.NewRepository()
+	artworkRepository := artworkrepository.NewRepository()
+	likeRepository := likerepository.NewRepository()
+	exchangeRepository := exchangerepository.NewRepository()
+
+	userController := usercontroller.NewController(userRepository)
+	artistController := artistcontroller.NewController(artistRepository)
+	artworkController := artworkcontroller.NewController(artworkRepository)
+	likeController := likecontroller.NewController(likeRepository)
+	exchangeController := exchangecontroller.NewController(exchangeRepository)
+
+	r := router.NewRouter(
+		userrouter.NewHandler(userController),
+		artistrouter.NewHandler(artistController),
+		artworkrouter.NewHandler(artworkController),
+		likerouter.NewHandler(likeController),
+		exchangerouter.NewHandler(exchangeController),
+	)
 	r.Mount()
 
 	addr := ":" + cfg.Port

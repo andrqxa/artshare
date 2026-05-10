@@ -6,20 +6,27 @@ import (
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	modelartist "github.com/andrqxa/artshare/internal/model/artist"
 	"github.com/andrqxa/artshare/internal/model/pagination"
-	artistrepository "github.com/andrqxa/artshare/internal/repository/artist"
 	"github.com/andrqxa/artshare/internal/repository/repoerror"
 )
 
 const currentUserID = "00000000-0000-0000-0000-000000000001"
 
+type Repository interface {
+	Create(input modelartist.CreateInput) (modelartist.Detail, error)
+	FindByUserID(userID string) (modelartist.Detail, error)
+	UpdateByUserID(userID string, input modelartist.UpdateInput) (modelartist.Detail, error)
+	List(filter modelartist.ListFilter) ([]modelartist.Summary, pagination.Meta)
+	FindByID(id string) (modelartist.Detail, error)
+}
+
 type Controller struct {
-	repository  *artistrepository.Repository
+	repository  Repository
 	currentUser string
 }
 
-func NewController() *Controller {
+func NewController(repository Repository) *Controller {
 	return &Controller{
-		repository:  artistrepository.NewRepository(),
+		repository:  repository,
 		currentUser: currentUserID,
 	}
 }

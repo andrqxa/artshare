@@ -7,16 +7,23 @@ import (
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	modeluser "github.com/andrqxa/artshare/internal/model/user"
 	"github.com/andrqxa/artshare/internal/repository/repoerror"
-	userrepository "github.com/andrqxa/artshare/internal/repository/user"
 )
 
-type Controller struct {
-	repository *userrepository.Repository
+type Repository interface {
+	Create(input modeluser.RegisterInput) (modeluser.CurrentUser, error)
+	FindByEmail(email string) (modeluser.CurrentUser, string, error)
+	GetCurrent() modeluser.CurrentUser
+	SetCurrent(user modeluser.CurrentUser)
+	UpdateCurrent(input modeluser.UpdateCurrentUserInput) modeluser.CurrentUser
 }
 
-func NewController() *Controller {
+type Controller struct {
+	repository Repository
+}
+
+func NewController(repository Repository) *Controller {
 	return &Controller{
-		repository: userrepository.NewRepository(),
+		repository: repository,
 	}
 }
 

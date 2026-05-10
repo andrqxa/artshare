@@ -5,17 +5,22 @@ import (
 
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	modellike "github.com/andrqxa/artshare/internal/model/like"
-	likerepository "github.com/andrqxa/artshare/internal/repository/like"
 	"github.com/andrqxa/artshare/internal/repository/repoerror"
 )
 
-type Controller struct {
-	repository *likerepository.Repository
+type Repository interface {
+	Create(input modellike.CreateInput) error
+	Delete(input modellike.DeleteInput) error
+	Exists(userID, artworkID string) bool
 }
 
-func NewController() *Controller {
+type Controller struct {
+	repository Repository
+}
+
+func NewController(repository Repository) *Controller {
 	return &Controller{
-		repository: likerepository.NewRepository(),
+		repository: repository,
 	}
 }
 

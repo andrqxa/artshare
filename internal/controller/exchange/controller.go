@@ -6,17 +6,23 @@ import (
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	modelexchange "github.com/andrqxa/artshare/internal/model/exchange"
 	"github.com/andrqxa/artshare/internal/model/pagination"
-	exchangerepository "github.com/andrqxa/artshare/internal/repository/exchange"
 	"github.com/andrqxa/artshare/internal/repository/repoerror"
 )
 
-type Controller struct {
-	repository *exchangerepository.Repository
+type Repository interface {
+	List(filter modelexchange.ListFilter) ([]modelexchange.Summary, pagination.Meta)
+	Create(input modelexchange.CreateInput) (modelexchange.Detail, error)
+	FindByID(id string) (modelexchange.Detail, error)
+	UpdateStatus(input modelexchange.UpdateStatusInput) (modelexchange.Detail, error)
 }
 
-func NewController() *Controller {
+type Controller struct {
+	repository Repository
+}
+
+func NewController(repository Repository) *Controller {
 	return &Controller{
-		repository: exchangerepository.NewRepository(),
+		repository: repository,
 	}
 }
 

@@ -6,17 +6,24 @@ import (
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	modelartwork "github.com/andrqxa/artshare/internal/model/artwork"
 	"github.com/andrqxa/artshare/internal/model/pagination"
-	artworkrepository "github.com/andrqxa/artshare/internal/repository/artwork"
 	"github.com/andrqxa/artshare/internal/repository/repoerror"
 )
 
-type Controller struct {
-	repository *artworkrepository.Repository
+type Repository interface {
+	List(filter modelartwork.ListFilter) ([]modelartwork.Summary, pagination.Meta)
+	Create(input modelartwork.CreateInput) (modelartwork.Detail, error)
+	FindByID(id string) (modelartwork.Detail, error)
+	Update(input modelartwork.UpdateInput) (modelartwork.Detail, error)
+	Delete(id string) error
 }
 
-func NewController() *Controller {
+type Controller struct {
+	repository Repository
+}
+
+func NewController(repository Repository) *Controller {
 	return &Controller{
-		repository: artworkrepository.NewRepository(),
+		repository: repository,
 	}
 }
 

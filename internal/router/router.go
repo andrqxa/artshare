@@ -1,11 +1,6 @@
 package router
 
 import (
-	artistcontroller "github.com/andrqxa/artshare/internal/controller/artist"
-	artworkcontroller "github.com/andrqxa/artshare/internal/controller/artwork"
-	exchangecontroller "github.com/andrqxa/artshare/internal/controller/exchange"
-	likecontroller "github.com/andrqxa/artshare/internal/controller/like"
-	usercontroller "github.com/andrqxa/artshare/internal/controller/user"
 	artistrouter "github.com/andrqxa/artshare/internal/router/artist"
 	artworkrouter "github.com/andrqxa/artshare/internal/router/artwork"
 	exchangerouter "github.com/andrqxa/artshare/internal/router/exchange"
@@ -24,15 +19,21 @@ type Router struct {
 	exchangeHandler *exchangerouter.Handler
 }
 
-func NewRouter() *Router {
+func NewRouter(
+	userHandler *userrouter.Handler,
+	artistHandler *artistrouter.Handler,
+	artworkHandler *artworkrouter.Handler,
+	likeHandler *likerouter.Handler,
+	exchangeHandler *exchangerouter.Handler,
+) *Router {
 	r := chi.NewRouter()
 	return &Router{
 		r:               r,
-		userHandler:     userrouter.NewHandler(usercontroller.NewController()),
-		artistHandler:   artistrouter.NewHandler(artistcontroller.NewController()),
-		artworkHandler:  artworkrouter.NewHandler(artworkcontroller.NewController()),
-		likeHandler:     likerouter.NewHandler(likecontroller.NewController()),
-		exchangeHandler: exchangerouter.NewHandler(exchangecontroller.NewController()),
+		userHandler:     userHandler,
+		artistHandler:   artistHandler,
+		artworkHandler:  artworkHandler,
+		likeHandler:     likeHandler,
+		exchangeHandler: exchangeHandler,
 	}
 }
 
