@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/andrqxa/artshare/internal/configs"
 	artistcontroller "github.com/andrqxa/artshare/internal/controller/artist"
@@ -37,9 +36,6 @@ func run() error {
 	cfg, err := configs.Read()
 	if err != nil {
 		return err
-	}
-	if len(os.Args) > 1 {
-		cfg.Port = os.Args[1]
 	}
 
 	postgresConnection, err := postgres.NewConnection(context.Background(), cfg.DatabaseURL)
