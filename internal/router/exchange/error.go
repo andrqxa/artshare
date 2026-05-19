@@ -1,12 +1,31 @@
 package exchange
 
-type FieldError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
+import (
+	routererror "github.com/andrqxa/artshare/internal/router/error"
+)
 
-type ErrorResponse struct {
-	Code    string       `json:"code"`
-	Message string       `json:"message"`
-	Details []FieldError `json:"details,omitempty"`
-}
+type (
+	FieldError    = routererror.FieldError
+	ErrorResponse = routererror.ErrorResponse
+)
+
+const (
+	ErrCodeExchangeNotFound = 100400 + iota
+	ErrCodeExchangeConflict
+	ErrCodeExchangeForbidden
+)
+
+var (
+	ErrExchangeNotFound = ErrorResponse{
+		Code:    ErrCodeExchangeNotFound,
+		Message: "The exchange request was not found.",
+	}
+	ErrExchangeConflict = ErrorResponse{
+		Code:    ErrCodeExchangeConflict,
+		Message: "The exchange request is not in a state that allows this transition.",
+	}
+	ErrExchangeForbidden = ErrorResponse{
+		Code:    ErrCodeExchangeForbidden,
+		Message: "You don't have permission to modify this exchange request.",
+	}
+)
