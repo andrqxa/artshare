@@ -39,7 +39,7 @@ func (c *Controller) RegisterUser(input modeluser.RegisterInput) (modeluser.Curr
 func (c *Controller) LoginUser(input modeluser.LoginInput) (modeluser.CurrentUser, modeluser.AuthToken, error) {
 	user, password, err := c.repository.FindByEmail(input.Email)
 	if err != nil || password != input.Password {
-		return modeluser.CurrentUser{}, modeluser.AuthToken{}, apperror.ErrUnauthorized
+		return modeluser.CurrentUser{}, modeluser.AuthToken{}, ErrInvalidCredentials
 	}
 
 	c.repository.SetCurrent(user)
@@ -59,11 +59,11 @@ func controllerError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, repoerror.ErrConflict):
-		return apperror.ErrConflict
+		return ErrUserAlreadyExists
 	case errors.Is(err, repoerror.ErrNotFound):
 		return apperror.ErrNotFound
 	default:
-		return err
+		return apperror.WrapInternal(err)
 	}
 }
 

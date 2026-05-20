@@ -7,7 +7,9 @@ import (
 
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	"github.com/andrqxa/artshare/internal/controller/like"
+	"github.com/andrqxa/artshare/internal/middleware/currentuser"
 	modellike "github.com/andrqxa/artshare/internal/model/like"
+	routererror "github.com/andrqxa/artshare/internal/router/error"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -21,7 +23,7 @@ func NewHandler(controller *like.Controller) *Handler {
 
 func (h *Handler) LikeArtwork(w http.ResponseWriter, r *http.Request) {
 	if err := h.controller.LikeArtwork(modellike.CreateInput{
-		UserID:    "00000000-0000-0000-0000-000000000001",
+		UserID:    currentuser.FromContext(r.Context()),
 		ArtworkID: chi.URLParam(r, "artworkId"),
 	}); err != nil {
 		writeControllerError(w, err)
@@ -32,7 +34,7 @@ func (h *Handler) LikeArtwork(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) UnlikeArtwork(w http.ResponseWriter, r *http.Request) {
 	if err := h.controller.UnlikeArtwork(modellike.DeleteInput{
-		UserID:    "00000000-0000-0000-0000-000000000001",
+		UserID:    currentuser.FromContext(r.Context()),
 		ArtworkID: chi.URLParam(r, "artworkId"),
 	}); err != nil {
 		writeControllerError(w, err)
@@ -50,10 +52,10 @@ func writeJSON(w http.ResponseWriter, status int, response any) {
 func writeControllerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, apperror.ErrConflict):
-		writeJSON(w, http.StatusConflict, ErrorResponse{Code: "conflict", Message: "request conflicts with current resource state"})
+		writeJSON(w, http.StatusConflict, ErrLikeConflict)
 	case errors.Is(err, apperror.ErrNotFound):
-		writeJSON(w, http.StatusNotFound, ErrorResponse{Code: "not_found", Message: "requested resource was not found"})
+		writeJSON(w, http.StatusNotFound, ErrLikeNotFound)
 	default:
-		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+		writeJSON(w, http.StatusInternalServerError, routererror.ErrInternal)
 	}
 }

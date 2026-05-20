@@ -11,6 +11,7 @@ import (
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	controlleruser "github.com/andrqxa/artshare/internal/controller/user"
 	modeluser "github.com/andrqxa/artshare/internal/model/user"
+	routererror "github.com/andrqxa/artshare/internal/router/error"
 )
 
 const maxRequestBodyBytes = 1 << 20
@@ -90,13 +91,7 @@ func (h *Handler) UpdateCurrentUser(w http.ResponseWriter, r *http.Request) {
 	if req.Email != nil {
 		email := strings.TrimSpace(*req.Email)
 		if _, err := mail.ParseAddress(email); err != nil {
-			writeJSON(w, http.StatusBadRequest, ErrorResponse{
-				Code:    "validation_error",
-				Message: "request validation failed",
-				Details: []FieldError{
-					{Field: "email", Message: "must be a valid email address"},
-				},
-			})
+			writeValidationError(w, []FieldError{{Field: "email", Message: "must be a valid email address"}})
 			return
 		}
 		req.Email = &email
@@ -125,15 +120,11 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 }
 
 func writeDecodeError(w http.ResponseWriter, err error) {
-	message := "invalid request body"
 	if errors.Is(err, errMultipleJSONValues) {
-		message = err.Error()
+		writeJSON(w, http.StatusBadRequest, routererror.ErrMultipleJSONValues)
+		return
 	}
-
-	writeJSON(w, http.StatusBadRequest, ErrorResponse{
-		Code:    "bad_request",
-		Message: message,
-	})
+	writeJSON(w, http.StatusBadRequest, routererror.ErrBadRequest)
 }
 
 func validateRegisterRequest(req RegisterRequest) []FieldError {
@@ -163,21 +154,17 @@ func validateLoginRequest(req LoginRequest) []FieldError {
 }
 
 func writeValidationError(w http.ResponseWriter, details []FieldError) {
-	writeJSON(w, http.StatusBadRequest, ErrorResponse{
-		Code:    "validation_error",
-		Message: "request validation failed",
-		Details: details,
-	})
+	writeJSON(w, http.StatusBadRequest, routererror.Validation(details))
 }
 
 func writeControllerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, apperror.ErrConflict):
-		writeJSON(w, http.StatusConflict, ErrorResponse{Code: "conflict", Message: "request conflicts with current resource state"})
+		writeJSON(w, http.StatusConflict, ErrUserAlreadyExists)
 	case errors.Is(err, apperror.ErrUnauthorized):
-		writeJSON(w, http.StatusUnauthorized, ErrorResponse{Code: "unauthorized", Message: "authentication failed"})
+		writeJSON(w, http.StatusUnauthorized, ErrUserUnauthorized)
 	default:
-		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+		writeJSON(w, http.StatusInternalServerError, routererror.ErrInternal)
 	}
 }
 

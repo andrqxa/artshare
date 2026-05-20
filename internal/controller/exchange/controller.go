@@ -46,7 +46,7 @@ func (c *Controller) UpdateExchangeRequestStatus(input modelexchange.UpdateStatu
 		return modelexchange.Detail{}, controllerError(err)
 	}
 	if current.Status != modelexchange.StatusPending {
-		return modelexchange.Detail{}, apperror.ErrConflict
+		return modelexchange.Detail{}, ErrExchangeNotPending
 	}
 
 	request, err := c.repository.UpdateStatus(input)
@@ -60,8 +60,8 @@ func controllerError(err error) error {
 	case errors.Is(err, repoerror.ErrConflict):
 		return apperror.ErrConflict
 	case errors.Is(err, repoerror.ErrNotFound):
-		return apperror.ErrNotFound
+		return ErrExchangeNotFound
 	default:
-		return err
+		return apperror.WrapInternal(err)
 	}
 }

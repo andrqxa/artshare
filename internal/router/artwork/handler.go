@@ -10,8 +10,10 @@ import (
 
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	"github.com/andrqxa/artshare/internal/controller/artwork"
+	"github.com/andrqxa/artshare/internal/middleware/currentuser"
 	modelartwork "github.com/andrqxa/artshare/internal/model/artwork"
 	"github.com/andrqxa/artshare/internal/model/pagination"
+	routererror "github.com/andrqxa/artshare/internal/router/error"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -72,8 +74,8 @@ func (h *Handler) CreateArtwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	artwork, err := h.controller.CreateArtwork(modelartwork.CreateInput{
-		ArtistID:                "00000000-0000-0000-0000-000000000001",
+	artworkDetail, err := h.controller.CreateArtwork(modelartwork.CreateInput{
+		ArtistID:                currentuser.FromContext(r.Context()),
 		Title:                   strings.TrimSpace(req.Title),
 		Description:             req.Description,
 		Tags:                    req.Tags,
@@ -84,16 +86,16 @@ func (h *Handler) CreateArtwork(w http.ResponseWriter, r *http.Request) {
 		writeControllerError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, artworkDetailFromModel(artwork))
+	writeJSON(w, http.StatusCreated, artworkDetailFromModel(artworkDetail))
 }
 
 func (h *Handler) GetArtworkByID(w http.ResponseWriter, r *http.Request) {
-	artwork, err := h.controller.GetArtworkByID(chi.URLParam(r, "artworkId"))
+	artworkDetail, err := h.controller.GetArtworkByID(chi.URLParam(r, "artworkId"))
 	if err != nil {
 		writeControllerError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, artworkDetailFromModel(artwork))
+	writeJSON(w, http.StatusOK, artworkDetailFromModel(artworkDetail))
 }
 
 func (h *Handler) UpdateArtwork(w http.ResponseWriter, r *http.Request) {
@@ -113,7 +115,7 @@ func (h *Handler) UpdateArtwork(w http.ResponseWriter, r *http.Request) {
 		parsed := modelartwork.Status(*req.Status)
 		status = &parsed
 	}
-	artwork, err := h.controller.UpdateArtwork(modelartwork.UpdateInput{
+	artworkDetail, err := h.controller.UpdateArtwork(modelartwork.UpdateInput{
 		ID:                      chi.URLParam(r, "artworkId"),
 		Title:                   trimmedString(req.Title),
 		Description:             req.Description,
@@ -126,7 +128,7 @@ func (h *Handler) UpdateArtwork(w http.ResponseWriter, r *http.Request) {
 		writeControllerError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, artworkDetailFromModel(artwork))
+	writeJSON(w, http.StatusOK, artworkDetailFromModel(artworkDetail))
 }
 
 func (h *Handler) DeleteArtwork(w http.ResponseWriter, r *http.Request) {
@@ -184,15 +186,11 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 }
 
 func writeDecodeError(w http.ResponseWriter, err error) {
-	message := "invalid request body"
 	if errors.Is(err, errMultipleJSONValues) {
-		message = err.Error()
+		writeJSON(w, http.StatusBadRequest, routererror.ErrMultipleJSONValues)
+		return
 	}
-
-	writeJSON(w, http.StatusBadRequest, ErrorResponse{
-		Code:    "bad_request",
-		Message: message,
-	})
+	writeJSON(w, http.StatusBadRequest, routererror.ErrBadRequest)
 }
 
 func writeJSON(w http.ResponseWriter, status int, response any) {
@@ -268,17 +266,17 @@ func optionalQuery(r *http.Request, name string) *string {
 }
 
 func writeValidationError(w http.ResponseWriter, details []FieldError) {
-	writeJSON(w, http.StatusBadRequest, ErrorResponse{Code: "validation_error", Message: "request validation failed", Details: details})
+	writeJSON(w, http.StatusBadRequest, routererror.Validation(details))
 }
 
 func writeControllerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, apperror.ErrNotFound):
-		writeJSON(w, http.StatusNotFound, ErrorResponse{Code: "not_found", Message: "requested resource was not found"})
+		writeJSON(w, http.StatusNotFound, ErrArtworkNotFound)
 	case errors.Is(err, apperror.ErrForbidden):
-		writeJSON(w, http.StatusForbidden, ErrorResponse{Code: "forbidden", Message: "permission denied"})
+		writeJSON(w, http.StatusForbidden, ErrArtworkForbidden)
 	default:
-		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+		writeJSON(w, http.StatusInternalServerError, routererror.ErrInternal)
 	}
 }
 

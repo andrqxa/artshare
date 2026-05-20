@@ -1,6 +1,7 @@
 package router
 
 import (
+	"github.com/andrqxa/artshare/internal/middleware/currentuser"
 	artistrouter "github.com/andrqxa/artshare/internal/router/artist"
 	artworkrouter "github.com/andrqxa/artshare/internal/router/artwork"
 	exchangerouter "github.com/andrqxa/artshare/internal/router/exchange"
@@ -39,6 +40,8 @@ func NewRouter(
 
 func (rr *Router) Mount() {
 	rr.r.Route("/api/v1", func(r chi.Router) {
+		r.Use(currentuser.Middleware)
+
 		r.Post("/auth/register", rr.userHandler.RegisterUser)
 		r.Post("/auth/login", rr.userHandler.LoginUser)
 

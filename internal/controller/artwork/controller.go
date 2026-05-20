@@ -57,8 +57,8 @@ func controllerError(err error) error {
 	case errors.Is(err, repoerror.ErrConflict):
 		return apperror.ErrConflict
 	case errors.Is(err, repoerror.ErrNotFound):
-		return apperror.ErrNotFound
+		return ErrArtworkNotFound
 	default:
-		return err
+		return apperror.WrapInternal(err)
 	}
 }

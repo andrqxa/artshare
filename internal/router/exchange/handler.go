@@ -9,9 +9,11 @@ import (
 
 	"github.com/andrqxa/artshare/internal/controller/apperror"
 	"github.com/andrqxa/artshare/internal/controller/exchange"
+	"github.com/andrqxa/artshare/internal/middleware/currentuser"
 	modelartwork "github.com/andrqxa/artshare/internal/model/artwork"
 	modelexchange "github.com/andrqxa/artshare/internal/model/exchange"
 	"github.com/andrqxa/artshare/internal/model/pagination"
+	routererror "github.com/andrqxa/artshare/internal/router/error"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -42,7 +44,7 @@ func (h *Handler) ListExchangeRequests(w http.ResponseWriter, r *http.Request) {
 	}
 
 	requests, meta := h.controller.ListExchangeRequests(modelexchange.ListFilter{
-		UserID:   "00000000-0000-0000-0000-000000000001",
+		UserID:   currentuser.FromContext(r.Context()),
 		Scope:    scope,
 		Status:   status,
 		Page:     page,
@@ -69,7 +71,7 @@ func (h *Handler) CreateExchangeRequest(w http.ResponseWriter, r *http.Request) 
 
 	request, err := h.controller.CreateExchangeRequest(modelexchange.CreateInput{
 		ArtworkID:   req.ArtworkID,
-		RequesterID: "00000000-0000-0000-0000-000000000001",
+		RequesterID: currentuser.FromContext(r.Context()),
 		Message:     req.Message,
 	})
 	if err != nil {
@@ -158,15 +160,11 @@ func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
 }
 
 func writeDecodeError(w http.ResponseWriter, err error) {
-	message := "invalid request body"
 	if errors.Is(err, errMultipleJSONValues) {
-		message = err.Error()
+		writeJSON(w, http.StatusBadRequest, routererror.ErrMultipleJSONValues)
+		return
 	}
-
-	writeJSON(w, http.StatusBadRequest, ErrorResponse{
-		Code:    "bad_request",
-		Message: message,
-	})
+	writeJSON(w, http.StatusBadRequest, routererror.ErrBadRequest)
 }
 
 func writeJSON(w http.ResponseWriter, status int, response any) {
@@ -216,19 +214,19 @@ func exchangeStatusFromValue(w http.ResponseWriter, value string, field string, 
 }
 
 func writeValidationError(w http.ResponseWriter, details []FieldError) {
-	writeJSON(w, http.StatusBadRequest, ErrorResponse{Code: "validation_error", Message: "request validation failed", Details: details})
+	writeJSON(w, http.StatusBadRequest, routererror.Validation(details))
 }
 
 func writeControllerError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, apperror.ErrConflict):
-		writeJSON(w, http.StatusConflict, ErrorResponse{Code: "conflict", Message: "request conflicts with current resource state"})
+		writeJSON(w, http.StatusConflict, ErrExchangeConflict)
 	case errors.Is(err, apperror.ErrNotFound):
-		writeJSON(w, http.StatusNotFound, ErrorResponse{Code: "not_found", Message: "requested resource was not found"})
+		writeJSON(w, http.StatusNotFound, ErrExchangeNotFound)
 	case errors.Is(err, apperror.ErrForbidden):
-		writeJSON(w, http.StatusForbidden, ErrorResponse{Code: "forbidden", Message: "permission denied"})
+		writeJSON(w, http.StatusForbidden, ErrExchangeForbidden)
 	default:
-		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error", Message: "internal server error"})
+		writeJSON(w, http.StatusInternalServerError, routererror.ErrInternal)
 	}
 }
 

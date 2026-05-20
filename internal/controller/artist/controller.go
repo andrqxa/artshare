@@ -9,8 +9,6 @@ import (
 	"github.com/andrqxa/artshare/internal/repository/repoerror"
 )
 
-const currentUserID = "00000000-0000-0000-0000-000000000001"
-
 type Repository interface {
 	Create(input modelartist.CreateInput) (modelartist.Detail, error)
 	FindByUserID(userID string) (modelartist.Detail, error)
@@ -20,40 +18,26 @@ type Repository interface {
 }
 
 type Controller struct {
-	repository  Repository
-	currentUser string
+	repository Repository
 }
 
 func NewController(repository Repository) *Controller {
 	return &Controller{
-		repository:  repository,
-		currentUser: currentUserID,
+		repository: repository,
 	}
 }
 
 func (c *Controller) CreateCurrentArtist(input modelartist.CreateInput) (modelartist.Detail, error) {
-	if input.UserID == "" {
-		input.UserID = c.currentUser
-	}
-
 	artist, err := c.repository.Create(input)
 	return artist, controllerError(err)
 }
 
 func (c *Controller) GetCurrentArtist(userID string) (modelartist.Detail, error) {
-	if userID == "" {
-		userID = c.currentUser
-	}
-
 	artist, err := c.repository.FindByUserID(userID)
 	return artist, controllerError(err)
 }
 
 func (c *Controller) UpdateCurrentArtist(userID string, input modelartist.UpdateInput) (modelartist.Detail, error) {
-	if userID == "" {
-		userID = c.currentUser
-	}
-
 	artist, err := c.repository.UpdateByUserID(userID, input)
 	return artist, controllerError(err)
 }
@@ -72,10 +56,10 @@ func controllerError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, repoerror.ErrConflict):
-		return apperror.ErrConflict
+		return ErrArtistAlreadyExists
 	case errors.Is(err, repoerror.ErrNotFound):
-		return apperror.ErrNotFound
+		return ErrArtistNotFound
 	default:
-		return err
+		return apperror.WrapInternal(err)
 	}
 }

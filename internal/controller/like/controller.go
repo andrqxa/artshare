@@ -41,10 +41,10 @@ func controllerError(err error) error {
 	case err == nil:
 		return nil
 	case errors.Is(err, repoerror.ErrConflict):
-		return apperror.ErrConflict
+		return ErrLikeConflict
 	case errors.Is(err, repoerror.ErrNotFound):
-		return apperror.ErrNotFound
+		return ErrLikeNotFound
 	default:
-		return err
+		return apperror.WrapInternal(err)
 	}
 }
