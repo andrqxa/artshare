@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS exchange_requests;
+DROP TABLE IF EXISTS likes;
+DROP TABLE IF EXISTS artwork_images;
+DROP TABLE IF EXISTS artworks;
+DROP TABLE IF EXISTS artists;
+DROP TABLE IF EXISTS users;
