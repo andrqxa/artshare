@@ -12,12 +12,12 @@ import (
 	exchangecontroller "github.com/andrqxa/artshare/internal/controller/exchange"
 	likecontroller "github.com/andrqxa/artshare/internal/controller/like"
 	usercontroller "github.com/andrqxa/artshare/internal/controller/user"
-	artworkrepository "github.com/andrqxa/artshare/internal/repository/memory/artwork"
-	exchangerepository "github.com/andrqxa/artshare/internal/repository/memory/exchange"
-	likerepository "github.com/andrqxa/artshare/internal/repository/memory/like"
-	userrepository "github.com/andrqxa/artshare/internal/repository/memory/user"
 	"github.com/andrqxa/artshare/internal/repository/postgres"
 	artistrepository "github.com/andrqxa/artshare/internal/repository/postgres/artist"
+	artworkrepository "github.com/andrqxa/artshare/internal/repository/postgres/artwork"
+	exchangerepository "github.com/andrqxa/artshare/internal/repository/postgres/exchange"
+	likerepository "github.com/andrqxa/artshare/internal/repository/postgres/like"
+	userrepository "github.com/andrqxa/artshare/internal/repository/postgres/user"
 	"github.com/andrqxa/artshare/internal/router"
 	artistrouter "github.com/andrqxa/artshare/internal/router/artist"
 	artworkrouter "github.com/andrqxa/artshare/internal/router/artwork"
@@ -44,11 +44,11 @@ func run() error {
 	}
 	defer postgresConnection.Close()
 
-	userRepository := userrepository.NewRepository()
+	userRepository := userrepository.NewRepository(postgresConnection)
 	artistRepository := artistrepository.NewRepository(postgresConnection)
-	artworkRepository := artworkrepository.NewRepository()
-	likeRepository := likerepository.NewRepository()
-	exchangeRepository := exchangerepository.NewRepository()
+	artworkRepository := artworkrepository.NewRepository(postgresConnection)
+	likeRepository := likerepository.NewRepository(postgresConnection)
+	exchangeRepository := exchangerepository.NewRepository(postgresConnection)
 
 	userController := usercontroller.NewController(userRepository)
 	artistController := artistcontroller.NewController(artistRepository)
