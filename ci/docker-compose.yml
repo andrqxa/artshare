@@ -1,9 +1,67 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: artshare-postgres
+    environment:
+      POSTGRES_USER: artshare
+      POSTGRES_PASSWORD: artshare
+      POSTGRES_DB: artshare
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artshare -d artshare"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - ../db-data:/var/lib/postgresql/data
+
+  migrate:
+    image: migrate/migrate:v4.17.0
+    container_name: artshare-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ../migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "postgres://artshare:artshare@postgres:5432/artshare?sslmode=disable",
+      "up"
+    ]
+
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: ci/Dockerfile
+    container_name: artshare-app
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://artshare:artshare@postgres:5432/artshare?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
-      - 8080:8080
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/v1/artists?pageSize=1 >/dev/null 2>&1 || exit 1"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  integration-tests:
+    build:
+      context: ..
+      dockerfile: ci/Dockerfile.integration
+    container_name: artshare-integration-tests
+    environment:
+      ARTSHARE_BASE_URL: "http://app:8080"
+      DATABASE_URL: "postgres://artshare:artshare@postgres:5432/artshare?sslmode=disable"
+    depends_on:
+      app:
+        condition: service_healthy
+    profiles: ["test"]

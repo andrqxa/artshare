@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build the Go binary
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./cmd/artshare/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./cmd/artshare
 
 # Create a minimal production image
 FROM alpine:latest
@@ -36,7 +36,7 @@ WORKDIR /app
 COPY --from=builder /app/app .
 
 # Set any environment variables required by the application
-ENV HTTP_ADDR=:8080
+ENV PORT=8080
 
 # Expose the port that the application listens on
 EXPOSE 8080

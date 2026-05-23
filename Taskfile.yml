@@ -7,7 +7,8 @@ vars:
   BIN_DIR: bin
   APP_NAME: artshare
   APP_PATH: ./cmd/artshare
-  MIGRATIONS_DIR: migrations-postgres
+  MIGRATIONS_DIR: migrations
+  COMPOSE_FILE: ci/docker-compose.yml
   MIGRATE_CMD: go run -tags 'postgres'
     github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
@@ -27,36 +28,31 @@ tasks:
       - rm -rf {{.BIN_DIR}}/*
 
   deps:
-    # TODO: Make from Docker container
     cmds:
       - go install -tags 'postgres'
         github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
   lint:
-    # TODO: Make from Docker container
     cmds:
       - golangci-lint run --fix --timeout 5m ./...
 
   migrate-postgres:
-    # TODO: Make from Docker container
     cmds:
       - '{{.MIGRATE_CMD}} -database "$DATABASE_URL" -path {{.MIGRATIONS_DIR}}
         up'
 
   migrate-up-postgres:
-    # TODO: Make from Docker container
     cmds:
       - '{{.MIGRATE_CMD}} -database "$DATABASE_URL" -path {{.MIGRATIONS_DIR}}
         up 1'
 
   migrate-down-postgres:
-    # TODO: Make from Docker container
     cmds:
       - '{{.MIGRATE_CMD}} -database "$DATABASE_URL" -path {{.MIGRATIONS_DIR}}
         down 1'
 
   run:
-    deps: [build] # TODO: Make from Docker container
+    deps: [build]
     cmds:
       - ./{{.BIN_DIR}}/{{.APP_NAME}}
 
@@ -65,10 +61,24 @@ tasks:
       - go test ./...
 
   start-cluster:
-    # TODO: startt DB + application using Docker Compose
+    desc: Start Postgres + application via docker-compose
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} up -d --build postgres migrate app
 
   stop-cluster:
-    # TODO: stop DB + application
+    desc: Stop and remove all compose services
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} down
+
+  logs-cluster:
+    desc: Tail logs from the running cluster
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} logs -f
 
   test-integration:
-  # TODO: start container with integration test code and run tests against the running application container
+    desc: Run integration tests in a container against the running app
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} --profile test up
+        --build --abort-on-container-exit --exit-code-from integration-tests
+        integration-tests
+      - docker compose -f {{.COMPOSE_FILE}} --profile test down
