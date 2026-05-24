@@ -1,12 +1,16 @@
 package artist
 
-type FieldError struct {
-	Field   string `json:"field"`
-	Message string `json:"message"`
-}
+import (
+	routererror "github.com/andrqxa/artshare/internal/router/error"
+)
 
-type ErrorResponse struct {
-	Code    string       `json:"code"`
-	Message string       `json:"message"`
-	Details []FieldError `json:"details,omitempty"`
-}
+const (
+	ErrCodeArtistNotFound = 100001 + iota
+)
+
+var (
+	ErrArtistNotFound = routererror.ErrorResponse{
+		Code:    ErrCodeArtistNotFound,
+		Message: "The requested artist was not found.",
+	}
+)

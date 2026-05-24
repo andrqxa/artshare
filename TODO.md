@@ -9,3 +9,11 @@
 * [x] Implement the artist Postgres repository
 * [ ] Implement the remaining repository functions for Postgres
 * [ ] Add tests for controllers and repositories
+* [ ] Create docker compose
+* [ ] Configure both service and DB in docker compose 
+* [ ] Change Taskfile to run both service and DB from docker compose
+* [ ] Write integration tests for artist
+* [ ] Create santinel errors for controller
+* [ ] Create error global specific like router/artist/error
+* [ ] Create separate container in docke-compose for integration tests
+* [ ] Add run integration tests from Taskfile
