@@ -1,6 +1,6 @@
 //go:build integration
 
-package artist_test
+package artist
 
 import (
 	"bytes"
